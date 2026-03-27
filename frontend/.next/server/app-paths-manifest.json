@@ -1,8 +1,4 @@
 {
-  "/_global-error/page": "app/_global-error/page.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/market/page": "app/market/page.js",
   "/page": "app/page.js",
-  "/portfolio/page": "app/portfolio/page.js",
-  "/trading/page": "app/trading/page.js"
+  "/trade/[symbol]/page": "app/trade/[symbol]/page.js"
 }

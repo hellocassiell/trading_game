@@ -1,0 +1,28 @@
+# Node.js
+frontend/node_modules
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.vercel/
+
+# Java
+backend/target/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+bin/
+*.log
+*.class
+
+# macOS
+.DS_Store
+
+# Logs
+*.log

@@ -1,48 +1,38 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import Link from 'next/link';
+import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
+
+import BottomNav from "../components/BottomNav";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: '港股模拟交易系统',
-  description: '高仿真的港股模拟交易系统',
+  title: "智财美股投资大赛",
+  description: "移动端 H5 模拟交易应用",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#2563eb",
+};
+
+type RootLayoutProps = {
+  children: ReactNode;
+};
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="zh-CN">
-      <body className="min-h-screen flex flex-col">
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <h1 className="text-xl font-bold text-primary">港股模拟交易</h1>
-              <nav className="hidden md:flex space-x-6">
-                <Link href="/" className="text-gray-600 hover:text-primary transition-colors">仪表盘</Link>
-                <Link href="/market" className="text-gray-600 hover:text-primary transition-colors">行情中心</Link>
-                <Link href="/trading" className="text-gray-600 hover:text-primary transition-colors">交易大厅</Link>
-                <Link href="/portfolio" className="text-gray-600 hover:text-primary transition-colors">我的持仓</Link>
-              </nav>
-            </div>
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-                U
-              </div>
-            </div>
-          </div>
-        </header>
+      <body className="min-h-screen bg-slate-100 text-slate-900 antialiased">
+        <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#f3f6fb] shadow-none md:overflow-hidden md:shadow-xl">
+          <main className="min-h-0 flex-1 overflow-y-auto pb-24 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {children}
+          </main>
 
-        <main className="flex-1 container mx-auto px-4 py-6">
-          {children}
-        </main>
-
-        <footer className="bg-white border-t border-gray-200 py-6 mt-auto">
-          <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} 港股模拟交易系统. All rights reserved.
-          </div>
-        </footer>
+          <BottomNav />
+        </div>
       </body>
     </html>
   );
