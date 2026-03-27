@@ -1,0 +1,8 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/market/page": "/market",
+  "/page": "/",
+  "/portfolio/page": "/portfolio",
+  "/trading/page": "/trading"
+}
