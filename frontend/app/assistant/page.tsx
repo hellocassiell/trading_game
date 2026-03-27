@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 
 import AppScreen from "../../components/AppScreen";
-import FakeKeyboard from "../../components/FakeKeyboard";
 import ScreenTopBar from "../../components/ScreenTopBar";
 import SurfaceCard from "../../components/SurfaceCard";
 import { assistantResults } from "../../lib/mock-data";
@@ -44,8 +43,6 @@ export default function AssistantPage() {
             切换到已输入 A 的结果页
           </Link>
         </div>
-
-        <FakeKeyboard />
       </SurfaceCard>
     </AppScreen>
   );

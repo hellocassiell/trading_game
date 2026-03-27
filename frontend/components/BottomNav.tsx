@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bot,
   ChartCandlestick,
+  Ellipsis,
   House,
   Medal,
   UserRound,
@@ -12,12 +12,12 @@ import {
 
 const navItems = [
   {
-    label: "主页",
+    label: "主頁",
     href: "/",
     icon: House,
   },
   {
-    label: "个人",
+    label: "個人",
     href: "/profile",
     icon: UserRound,
   },
@@ -27,9 +27,9 @@ const navItems = [
     icon: Medal,
   },
   {
-    label: "助手",
+    label: "更多",
     href: "/assistant",
-    icon: Bot,
+    icon: Ellipsis,
   },
   {
     label: "交易",
