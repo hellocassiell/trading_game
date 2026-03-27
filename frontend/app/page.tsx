@@ -206,7 +206,7 @@ export default function HomePage() {
         </Link>
 
         <section className="border border-[#dde6f4] bg-white px-2 py-2">
-          <BlockHeader title="超级参赛者" action="排行榜" href="/ranking" />
+          <BlockHeader title="超级参赛者" action="20大持仓" href="/market/top-holdings" />
           <SubTabs
             tabs={[
               { label: "今日", active: true },

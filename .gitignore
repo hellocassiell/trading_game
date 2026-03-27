@@ -1,8 +1,9 @@
 # Node.js
-frontend/node_modules
+frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/dist/
+frontend/Library/
 frontend/.env.local
 frontend/.env.development.local
 frontend/.env.test.local
@@ -24,5 +25,13 @@ bin/
 # macOS
 .DS_Store
 
+# Editors
+.idea/
+
 # Logs
 *.log
+
+node_modules/
+dist/
+unpackage/
+.DS_Store

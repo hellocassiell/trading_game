@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Check, ChevronRight, Smartphone, X } from "lucide-react";
 
@@ -226,7 +227,7 @@ function ModalShell({
   children,
   product,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   product: TradeProduct;
 }) {
   return (
@@ -236,7 +237,7 @@ function ModalShell({
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center bg-[rgba(36,45,61,0.26)] px-4">
-        <div className="w-full max-w-[280px] rounded-[10px] bg-white px-4 py-4 shadow-[0_24px_48px_rgba(15,23,42,0.24)]">
+        <div className="relative w-full max-w-[280px] rounded-[10px] bg-white px-4 py-4 shadow-[0_24px_48px_rgba(15,23,42,0.24)]">
           {children}
         </div>
       </div>
