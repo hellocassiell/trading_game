@@ -1,7 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  startTransition,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   Check,
@@ -15,10 +21,11 @@ import {
 } from "lucide-react";
 
 import {
-  assistantResults,
-  getTradeProduct,
-  recentSearches,
-} from "../lib/mock-data";
+  getTradeProductViewModel,
+  getTradeSearchItems,
+  submitTradeOrder,
+} from "../lib/adapters/trade";
+import type { TradeOrderType, TradeSide } from "../lib/api/types";
 
 type TradeProduct = {
   symbol: string;
@@ -35,6 +42,7 @@ type TradeProduct = {
   defaultQuantity?: string;
   settlementTotal?: string;
   platformLink?: string;
+  quoteUpdatedAt?: string;
 };
 
 type TradeTicketCardProps = {
@@ -113,32 +121,15 @@ function SearchPanel({
   onClose?: () => void;
   onPick: (symbol: string) => void;
 }) {
-  const normalizedQuery = query.trim().toUpperCase();
+  const deferredQuery = useDeferredValue(query);
+  const normalizedQuery = deferredQuery.trim().toUpperCase();
   const mergedResults = useMemo<SearchResult[]>(() => {
-    const recentItems = recentSearches.map((item) => ({
-      symbol: item.symbol,
-      name: item.name,
-      badge: "最近搜索",
-    }));
-    const assistantItems = assistantResults.map((item) => ({
-      symbol: item.code,
-      name: item.symbol,
-      badge: "热门",
-    }));
-
-    const unique = new Map<string, SearchResult>();
-    [...recentItems, ...assistantItems].forEach((item) => {
-      if (!unique.has(item.symbol)) {
-        unique.set(item.symbol, item);
-      }
-    });
-
-    return Array.from(unique.values());
+    return getTradeSearchItems();
   }, []);
 
   const visibleResults = normalizedQuery
     ? mergedResults.filter((item) => {
-        const product = getTradeProduct(item.symbol);
+        const product = getTradeProductViewModel(item.symbol);
         const searchable = [item.symbol, item.name, product.company].join(" ").toUpperCase();
         return searchable.includes(normalizedQuery);
       })
@@ -214,7 +205,7 @@ function SearchPanel({
                     ) : null}
                   </div>
                   <p className="mt-1 truncate text-[12px] text-[#8f7f6f]">
-                    {getTradeProduct(item.symbol).company || item.name}
+                    {getTradeProductViewModel(item.symbol).company || item.name}
                   </p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-[#c8aa85]" />
@@ -248,6 +239,9 @@ export default function TradeTicketCard({
   const [showConfirm, setShowConfirm] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDetails, setShowDetails] = useState(variant === "order");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitPending, setSubmitPending] = useState(false);
+  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveProduct(product);
@@ -259,6 +253,9 @@ export default function TradeTicketCard({
     setShowConfirm(false);
     setShowSuccess(false);
     setShowDetails(variant === "order");
+    setSubmitError(null);
+    setSubmitPending(false);
+    setLastOrderId(null);
   }, [product, startWithSearch, variant]);
 
   const currentProduct = activeProduct;
@@ -281,7 +278,22 @@ export default function TradeTicketCard({
   const changeArrow = isNegative ? "▼" : "▲";
   const changeTone = isNegative ? "text-[#ef4444]" : "text-[#26b26a]";
   const changePct = currentProduct?.change?.match(/\(([^)]+)\)/)?.[1] ?? "0.075%";
-  const canSubmit = !!currentProduct && displayPrice > 0 && displayQuantity > 0;
+  const orderSide: TradeSide = side === "buy" ? "BUY" : "SELL";
+  const orderType: TradeOrderType = "LIMIT";
+  const minPrice = side === "buy" ? 0.05 : 0.01;
+  const validationError = !currentProduct
+    ? "请选择可交易港股"
+    : displayPrice < minPrice
+      ? `${side === "buy" ? "买入" : "卖出"}价不得低于 HK$${minPrice.toFixed(2)}`
+      : displayQuantity % lotSize !== 0
+        ? `交易股数必须为每手 ${lotSize} 股的整数倍`
+        : null;
+  const canSubmit =
+    !!currentProduct &&
+    displayPrice > 0 &&
+    displayQuantity > 0 &&
+    !validationError &&
+    !submitPending;
   const isTradingHours = (() => {
     const now = new Date();
     const day = now.getDay();
@@ -308,11 +320,12 @@ export default function TradeTicketCard({
 
   const openSearch = () => {
     setQuery("");
+    setSubmitError(null);
     setShowSearch(true);
   };
 
   const handleSearchPick = (symbol: string) => {
-    const nextProduct = getTradeProduct(symbol) as TradeProduct;
+    const nextProduct = getTradeProductViewModel(symbol);
 
     setActiveProduct(nextProduct);
     setPrice(parseNumericValue(nextProduct.defaultPrice ?? nextProduct.price));
@@ -320,17 +333,46 @@ export default function TradeTicketCard({
     setShowSearch(false);
     setShowConfirm(false);
     setShowSuccess(false);
+    setSubmitError(null);
   };
 
   const handleSubmit = () => {
     if (!canSubmit) {
+      setSubmitError(validationError ?? "请输入有效的交易资料");
       return;
     }
 
+    setSubmitError(null);
     setShowConfirm(true);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (!currentProduct || validationError) {
+      setShowConfirm(false);
+      setSubmitError(validationError ?? "请选择可交易港股");
+      return;
+    }
+
+    setSubmitPending(true);
+    setSubmitError(null);
+
+    const result = await submitTradeOrder({
+      stockCode: currentProduct.symbol,
+      side: orderSide,
+      orderType,
+      price: displayPrice,
+      quantity: displayQuantity,
+    });
+
+    setSubmitPending(false);
+
+    if (!result.ok) {
+      setShowConfirm(false);
+      setSubmitError(result.message);
+      return;
+    }
+
+    setLastOrderId(result.orderId);
     setShowConfirm(false);
     setShowSuccess(true);
   };
@@ -338,8 +380,11 @@ export default function TradeTicketCard({
   const closeAll = () => {
     setShowSuccess(false);
     setShowConfirm(false);
+    setSubmitError(null);
     onClose?.();
-    router.push("/");
+    startTransition(() => {
+      router.push("/");
+    });
   };
 
   if (showSearch) {
@@ -442,13 +487,15 @@ export default function TradeTicketCard({
                   </span>
                 </div>
                 <p className="mt-1 text-[9px] text-[#baa28b]">
-                  港股即时报价 2021/04/21 11:00 HKT
+                  港股即时报价 {currentProduct.quoteUpdatedAt ?? "2021/04/21 11:00 HKT"}
                 </p>
                 <button
                   type="button"
                   onClick={() => {
                     onClose?.();
-                    router.push("/quotes");
+                    startTransition(() => {
+                      router.push("/quotes");
+                    });
                   }}
                   className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--app-orange-dark)]"
                 >
@@ -551,8 +598,18 @@ export default function TradeTicketCard({
                   : "bg-[#ecd5bd] text-white"
               }`}
             >
-              {variant === "order" ? "提交修改" : "提交"}
+              {submitPending ? "提交中..." : variant === "order" ? "提交修改" : "提交"}
             </button>
+            <p className="pt-1.5 text-center text-[9px] text-[#b5a08a]">{validityText}</p>
+            {submitError ? (
+              <p className="mt-2 rounded-[14px] bg-[#fff2ef] px-3 py-2 text-[11px] font-semibold text-[#d0524a]">
+                {submitError}
+              </p>
+            ) : validationError ? (
+              <p className="mt-2 rounded-[14px] bg-[#fff8ef] px-3 py-2 text-[11px] font-semibold text-[#b07633]">
+                {validationError}
+              </p>
+            ) : null}
             <p className="pt-1.5 text-center text-[9px] text-[#b5a08a]">(此为比赛交易)</p>
           </footer>
         </div>
@@ -614,9 +671,10 @@ export default function TradeTicketCard({
             <button
               type="button"
               onClick={handleConfirm}
+              disabled={submitPending}
               className="flex h-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] text-[14px] font-black text-white"
             >
-              确定
+              {submitPending ? "提交中..." : "确定"}
             </button>
           </div>
         </DialogCard>
@@ -630,6 +688,11 @@ export default function TradeTicketCard({
             </div>
           </div>
           <h3 className="mt-3 text-center text-[18px] font-black text-[#27231f]">提交成功</h3>
+          {lastOrderId ? (
+            <p className="mt-2 text-center text-[11px] font-semibold text-[#9c7f61]">
+              订单编号 {lastOrderId}
+            </p>
+          ) : null}
 
           <div className="mt-5 space-y-3">
             <button
@@ -637,7 +700,9 @@ export default function TradeTicketCard({
               onClick={() => {
                 setShowSuccess(false);
                 onClose?.();
-                router.push("/records");
+                startTransition(() => {
+                  router.push("/records");
+                });
               }}
               className="flex h-11 w-full items-center justify-center rounded-full border border-[#ffbe78] bg-white text-[14px] font-black text-[var(--app-orange-dark)]"
             >
@@ -655,7 +720,9 @@ export default function TradeTicketCard({
               onClick={() => {
                 setShowSuccess(false);
                 onClose?.();
-                router.push("/quotes");
+                startTransition(() => {
+                  router.push("/quotes");
+                });
               }}
               className="flex h-11 w-full items-center justify-center rounded-full border border-[#ffbe78] bg-white text-[14px] font-black text-[var(--app-orange-dark)]"
             >

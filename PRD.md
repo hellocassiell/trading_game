@@ -145,7 +145,7 @@
 *   **UI规范**：严格参照本地设计稿 `/Users/jimmy/AI/UI设计稿` 进行开发。
 
 ### 6.2 后端要求
-*   **核心框架**：Spring Boot, Mybatis, Mybatis-plus, Java 8
+*   **核心框架**：Spring Boot, Mybatis, Mybatis-plus, Java 17
 *   **依赖管理**：Maven
 *   **中间件**：RabbitMQ（行情与异步任务）、Redis（缓存与高速撮合）、MySQL（持久化）
 *   **工程目录**：所有后端代码与配置文件需直接生成在根目录 `backend/` 下。

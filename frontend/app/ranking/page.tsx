@@ -3,10 +3,15 @@ import { ChevronLeft, UserRound } from "lucide-react";
 
 import AppScreen from "../../components/AppScreen";
 import { TradeTrigger } from "../../components/TradeModal";
-import { starParticipants } from "../../lib/mock-data";
+import { getRankingPageData } from "../../lib/adapters/ranking";
 
-function TrendChart() {
-  const { chartLabels, chartValues } = starParticipants.featured;
+function TrendChart({
+  chartLabels,
+  chartValues,
+}: {
+  chartLabels: readonly string[];
+  chartValues: readonly number[];
+}) {
 
   const points = chartValues
     .map((value, index) => {
@@ -52,8 +57,26 @@ function TrendChart() {
 }
 
 export default function RankingPage() {
-  const { featured, tabs, holdings, holdingsTitle, currencyLabel, disclaimer, footerUpdatedAt } =
-    starParticipants;
+  const { status, starParticipants } = getRankingPageData();
+  const {
+    featured,
+    tabs,
+    holdings,
+    holdingsTitle,
+    currencyLabel,
+    disclaimer,
+    footerUpdatedAt,
+  } = starParticipants;
+
+  if (status === "error") {
+    return (
+      <AppScreen>
+        <div className="app-panel rounded-[28px] px-5 py-10 text-center">
+          <p className="text-[18px] font-black text-[#2a1b12]">星级参赛者资料加载失败</p>
+        </div>
+      </AppScreen>
+    );
+  }
 
   return (
     <AppScreen className="!px-0 !pb-[calc(env(safe-area-inset-bottom)+86px)]">
@@ -88,7 +111,7 @@ export default function RankingPage() {
             </div>
           </div>
 
-          <div className="relative mt-5 overflow-hidden rounded-[24px] bg-white px-4 py-4 text-[#2f2117] shadow-[0_18px_34px_rgba(120,62,0,0.18)]">
+          <div className="relative mt-5 overflow-hidden rounded-[24px] border border-[#f6e1c6] bg-white px-4 py-4 text-[#2f2117] shadow-[0_18px_34px_rgba(120,62,0,0.18)]">
             <div className="pointer-events-none absolute left-[-12px] top-[88px] text-[220px] font-black leading-none tracking-[-0.08em] text-[#f8f2ea]">
               A
             </div>
@@ -115,7 +138,7 @@ export default function RankingPage() {
               </p>
             </div>
 
-            <div className="relative mt-5 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2">
+            <div className="relative mt-5 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 rounded-[18px] bg-[#fff9f2] px-3 py-3">
               <span className="text-[15px] font-bold text-[#8d7964]">证券参考市值</span>
               <span className="text-[16px] font-black text-[#22160d]">
                 {featured.marketValue} 港币
@@ -128,7 +151,10 @@ export default function RankingPage() {
               </span>
             </div>
 
-            <TrendChart />
+            <TrendChart
+              chartLabels={featured.chartLabels}
+              chartValues={featured.chartValues}
+            />
 
             <p className="relative mt-3 text-[11px] font-medium text-[#b39a80]">
               资料更新 {featured.updatedAt}
@@ -154,7 +180,7 @@ export default function RankingPage() {
                 <TradeTrigger
                   key={item.symbol}
                   symbol={item.symbol}
-                  className="grid w-full grid-cols-[1fr_auto] gap-4 py-4 text-left"
+                  className="grid w-full grid-cols-[1fr_auto] gap-4 py-4 text-left active:bg-[#fffaf3]"
                 >
                   <div>
                     <p className="text-[24px] font-black leading-none text-[#23170e]">{item.symbol}</p>

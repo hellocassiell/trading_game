@@ -45,23 +45,23 @@ export default function PositionsPage() {
                     <div>
                       <p>数量</p>
                       <p className="text-[9px] font-semibold text-[#5f6c80]">
-                        {item.qty}
+                        {item.quantity}
                       </p>
                     </div>
                     <div>
-                      <p>持仓</p>
+                      <p>成交</p>
                       <p className="text-[9px] font-semibold text-[#5f6c80]">
-                        {item.cost}
+                        {item.dealt}
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="text-right text-[8px]">
                   <p className="rounded-full bg-[#edf4ff] px-1.5 py-0.5 text-[#4976e8]">
-                    {item.action}
+                    {item.side}
                   </p>
                   <p className="mt-1 text-[9px] font-semibold text-[#5f6c80]">
-                    {item.qty}
+                    {item.quantity}
                   </p>
                 </div>
               </div>

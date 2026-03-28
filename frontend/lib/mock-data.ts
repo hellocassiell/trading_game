@@ -234,7 +234,7 @@ export const starParticipants = {
   featured: {
     name: "青姐",
     tag: "独立股评人",
-    intro: "今日投资建议股 Placeholder Placeholder Placeholder Placeholder..",
+    intro: "留意强势科技股回调后的承接力，优先观察 0700 腾讯控股 与 9988 阿里巴巴-SW。",
     marketValue: "513,910.000",
     cash: "379,562.000",
     totalAssets: "947,321.640",
@@ -342,7 +342,7 @@ export const homeStarParticipants = {
   featured: {
     name: "青姐",
     tag: "独立股评人",
-    intro: "今日投资建议股 Placeholder Placeholder Placeholder Placeholder..",
+    intro: "今日留意 0700 腾讯控股回调吸纳机会，并观察 9988 阿里巴巴-SW 成交量变化。",
     totalAssets: "1,656,735.000 港元",
     holding: "0700",
     recentTrade: "买入 9988",

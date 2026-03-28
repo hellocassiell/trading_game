@@ -1,5 +1,5 @@
 import { TradeEditPreview } from "../../../../components/PrototypeStates";
-import { getTradeProduct } from "../../../../lib/mock-data";
+import { getTradeProductViewModel } from "../../../../lib/adapters/trade";
 
 type TradeEditPageProps = {
   params: Promise<{ symbol: string }>;
@@ -8,5 +8,5 @@ type TradeEditPageProps = {
 export default async function TradeEditPage({ params }: TradeEditPageProps) {
   const { symbol } = await params;
 
-  return <TradeEditPreview product={getTradeProduct(symbol)} />;
+  return <TradeEditPreview product={getTradeProductViewModel(symbol)} />;
 }

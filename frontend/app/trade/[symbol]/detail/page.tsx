@@ -1,5 +1,5 @@
 import { TradeDetailPreview } from "../../../../components/PrototypeStates";
-import { getTradeProduct } from "../../../../lib/mock-data";
+import { getTradeProductViewModel } from "../../../../lib/adapters/trade";
 
 type TradeDetailPreviewPageProps = {
   params: Promise<{ symbol: string }>;
@@ -10,5 +10,5 @@ export default async function TradeDetailPreviewPage({
 }: TradeDetailPreviewPageProps) {
   const { symbol } = await params;
 
-  return <TradeDetailPreview product={getTradeProduct(symbol)} />;
+  return <TradeDetailPreview product={getTradeProductViewModel(symbol)} />;
 }

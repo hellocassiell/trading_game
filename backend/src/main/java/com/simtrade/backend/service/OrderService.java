@@ -2,8 +2,30 @@ package com.simtrade.backend.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.simtrade.backend.dto.OrderRequest;
+import com.simtrade.backend.dto.TradeOrderCreateRequest;
+import com.simtrade.backend.dto.TradeOrderPreviewResult;
+import com.simtrade.backend.dto.TradeOrderSubmitResult;
 import com.simtrade.backend.entity.Order;
+
+import java.time.LocalDate;
+import java.util.List;
 
 public interface OrderService extends IService<Order> {
     String placeOrder(OrderRequest request);
+
+    TradeOrderSubmitResult placeOrderV1(String userId, TradeOrderCreateRequest request);
+
+    TradeOrderPreviewResult previewOrderV1(String userId, TradeOrderCreateRequest request);
+
+    long countTodayBuyOrders(String userId);
+
+    List<Order> listActiveOrders(String userId, String status);
+
+    List<Order> listHistoryOrders(String userId, LocalDate dateFrom, LocalDate dateTo);
+
+    Order getOrderDetail(String userId, String orderId);
+
+    Order cancelOrder(String userId, String orderId);
+
+    String getOrderType(String orderId);
 }

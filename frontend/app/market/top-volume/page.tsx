@@ -6,10 +6,7 @@ import { ChevronLeft } from "lucide-react";
 
 import AppScreen from "../../../components/AppScreen";
 import { TradeTrigger } from "../../../components/TradeModal";
-import {
-  topVolume,
-  topVolumeSell,
-} from "../../../lib/mock-data";
+import { getTopVolumePageData } from "../../../lib/adapters/ranking";
 
 const tabs = [
   { key: "buy", label: "10大买入" },
@@ -17,8 +14,19 @@ const tabs = [
 ] as const;
 
 export default function TopVolumePage() {
+  const { status, buyRows, sellRows, updatedAt } = getTopVolumePageData();
   const [activeTab, setActiveTab] = useState<"buy" | "sell">("buy");
-  const rows = activeTab === "buy" ? topVolume : topVolumeSell;
+  const rows = activeTab === "buy" ? buyRows : sellRows;
+
+  if (status === "error") {
+    return (
+      <AppScreen>
+        <div className="app-panel rounded-[28px] px-5 py-10 text-center">
+          <p className="text-[18px] font-black text-[#2a1b12]">成交榜单加载失败</p>
+        </div>
+      </AppScreen>
+    );
+  }
 
   return (
     <AppScreen className="!px-0">
@@ -90,7 +98,7 @@ export default function TopVolumePage() {
         </div>
 
         <div className="px-4 py-3 text-[11px] text-[#b3a698]">
-          最後更新 2021/04/21 22:00 HKT
+          最後更新 {updatedAt}
         </div>
       </div>
     </AppScreen>

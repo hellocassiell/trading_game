@@ -1,5 +1,5 @@
 import { TradeSuccessPreview } from "../../../../components/PrototypeStates";
-import { getTradeProduct } from "../../../../lib/mock-data";
+import { getTradeProductViewModel } from "../../../../lib/adapters/trade";
 
 type TradeSuccessPageProps = {
   params: Promise<{ symbol: string }>;
@@ -10,5 +10,5 @@ export default async function TradeSuccessPage({
 }: TradeSuccessPageProps) {
   const { symbol } = await params;
 
-  return <TradeSuccessPreview product={getTradeProduct(symbol)} />;
+  return <TradeSuccessPreview product={getTradeProductViewModel(symbol)} />;
 }

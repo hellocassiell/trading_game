@@ -1,5 +1,5 @@
 import { TradeConfirmPreview } from "../../../../components/PrototypeStates";
-import { getTradeProduct } from "../../../../lib/mock-data";
+import { getTradeProductViewModel } from "../../../../lib/adapters/trade";
 
 type TradeConfirmPageProps = {
   params: Promise<{ symbol: string }>;
@@ -10,5 +10,10 @@ export default async function TradeConfirmPage({
 }: TradeConfirmPageProps) {
   const { symbol } = await params;
 
-  return <TradeConfirmPreview product={getTradeProduct(symbol)} title="确认指示（下一交易日执行）" />;
+  return (
+    <TradeConfirmPreview
+      product={getTradeProductViewModel(symbol)}
+      title="确认指示（下一交易日执行）"
+    />
+  );
 }

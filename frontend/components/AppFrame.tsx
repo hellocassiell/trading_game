@@ -14,7 +14,8 @@ function shouldHideBottomNav(pathname: string) {
     pathname.startsWith("/guest") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/assistant") ||
-    pathname.startsWith("/market")
+    pathname.startsWith("/market") ||
+    pathname.startsWith("/trade/")
   );
 }
 

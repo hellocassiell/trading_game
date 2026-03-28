@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import TradeTicketCard from "./TradeTicketCard";
-import { getTradeProduct } from "../lib/mock-data";
+import { getTradeProductViewModel } from "../lib/adapters/trade";
 
 type TradeModalVariant = "trade" | "order";
 
@@ -50,7 +50,7 @@ export function TradeModalProvider({ children }: { children: ReactNode }) {
 
           <div className="relative z-10 w-full pb-0">
             <TradeTicketCard
-              product={state.symbol ? getTradeProduct(state.symbol) : undefined}
+              product={state.symbol ? getTradeProductViewModel(state.symbol) : undefined}
               variant={state.variant}
               startWithSearch={!state.symbol}
               onClose={() => setState(null)}

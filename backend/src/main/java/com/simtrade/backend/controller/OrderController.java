@@ -16,13 +16,7 @@ public class OrderController {
 
     @PostMapping("/place")
     public Result<String> placeOrder(@Validated @RequestBody OrderRequest request) {
-        try {
-            String orderId = orderService.placeOrder(request);
-            return Result.success(orderId);
-        } catch (IllegalArgumentException e) {
-            return Result.error(400, e.getMessage());
-        } catch (Exception e) {
-            return Result.error(500, "Order placement failed: " + e.getMessage());
-        }
+        String orderId = orderService.placeOrder(request);
+        return Result.success(orderId);
     }
 }

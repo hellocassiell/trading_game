@@ -14,16 +14,7 @@ import {
 } from "lucide-react";
 
 import { TradeTrigger } from "../components/TradeModal";
-import {
-  appMeta,
-  homeEventStats,
-  homeHoldingCloud,
-  homeRankingRows,
-  homeStarParticipants,
-  homeSummaryCard,
-  homeVolumeSnapshot,
-  homeWeeklyFlyers,
-} from "../lib/mock-data";
+import { getHomePageData } from "../lib/adapters/home";
 
 function SectionTitle({
   title,
@@ -48,7 +39,7 @@ function SectionTitle({
   );
 }
 
-function EventStatIcon({ icon }: { icon: (typeof homeEventStats)[number]["icon"] }) {
+function EventStatIcon({ icon }: { icon: string }) {
   if (icon === "users") {
     return <Users className="h-4 w-4" />;
   }
@@ -94,7 +85,7 @@ function RankingMedal({ rank }: { rank: string }) {
   );
 }
 
-function RankingMovement({ movement }: { movement: (typeof homeRankingRows)[number]["movement"] }) {
+function RankingMovement({ movement }: { movement: string }) {
   if (movement === "up") {
     return <ArrowUp className="h-4 w-4 text-[#2eb568]" strokeWidth={3} />;
   }
@@ -107,9 +98,42 @@ function RankingMovement({ movement }: { movement: (typeof homeRankingRows)[numb
 }
 
 export default function HomePage() {
+  const {
+    status,
+    appMeta,
+    eventStats: homeEventStats,
+    summaryCard: homeSummaryCard,
+    starParticipants: homeStarParticipants,
+    holdingCloud: homeHoldingCloud,
+    volumeSnapshot: homeVolumeSnapshot,
+    weeklyFlyers: homeWeeklyFlyers,
+    rankingRows: homeRankingRows,
+  } = getHomePageData();
+
+  if (status === "error") {
+    return (
+      <div className="px-[var(--app-gutter)] py-10">
+        <div className="app-panel rounded-[28px] px-5 py-8 text-center">
+          <p className="text-[18px] font-black text-[#2a1b12]">主页加载失败</p>
+          <p className="mt-2 text-[13px] text-[#9d8162]">请稍后再试，或返回上一页重试。</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === "empty") {
+    return (
+      <div className="px-[var(--app-gutter)] py-10">
+        <div className="app-panel rounded-[28px] px-5 py-8 text-center">
+          <p className="text-[18px] font-black text-[#2a1b12]">暂无赛事资料</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-full bg-transparent text-[#533b23]">
-      <header className="overflow-hidden bg-[linear-gradient(180deg,#ffb765_0%,#ff9526_54%,#de7600_100%)] px-[var(--app-gutter)] pb-4 pt-[max(env(safe-area-inset-top),12px)] text-white shadow-[0_18px_32px_rgba(171,86,0,0.2)]">
+      <header className="overflow-hidden bg-[linear-gradient(180deg,#ffbb69_0%,#ff9825_53%,#dc7300_100%)] px-[var(--app-gutter)] pb-5 pt-[max(env(safe-area-inset-top),12px)] text-white shadow-[0_18px_32px_rgba(171,86,0,0.2)]">
         <div className="flex items-center justify-between">
           <div className="inline-flex items-center gap-1 text-[15px] font-black tracking-[0.03em]">
             <span>{appMeta.brand}</span>
@@ -145,8 +169,13 @@ export default function HomePage() {
           <span className="text-[13px] font-bold text-[#7b5c38]">由 Citi 赞助</span>
         </div>
 
-        <div className="mt-4 flex items-center justify-between">
-          <h1 className="text-[24px] font-black leading-none">赛事统计</h1>
+        <div className="mt-5 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-white/78">
+              HONG KONG STOCK TRADING GAME
+            </p>
+            <h1 className="mt-1 text-[26px] font-black leading-none">赛事统计</h1>
+          </div>
           <div className="inline-flex items-center gap-1 rounded-full bg-white/18 px-3 py-1.5 text-[12px] font-bold">
             <span className="text-[15px]">🇭🇰</span>
             <span>货币 港元</span>
@@ -184,7 +213,7 @@ export default function HomePage() {
       <main className="space-y-4 px-[var(--app-gutter)] pb-5 pt-3">
         <Link
           href="/guest"
-          className="relative block overflow-hidden rounded-[24px] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]"
+          className="relative block overflow-hidden rounded-[24px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]"
         >
           <div className="absolute inset-y-0 right-0 w-[45%] bg-[radial-gradient(circle_at_top,rgba(255,198,132,0.38),transparent_55%)]" />
           <div className="relative flex items-center gap-3">
@@ -207,7 +236,7 @@ export default function HomePage() {
           </div>
         </Link>
 
-        <section className="overflow-hidden rounded-[24px] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
+        <section className="overflow-hidden rounded-[24px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div className="h-12 w-12 rounded-full bg-[#f0ece7]" />
@@ -287,7 +316,7 @@ export default function HomePage() {
 
           <Link
             href="/ranking"
-            className="relative block overflow-hidden rounded-[26px] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]"
+            className="relative block overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]"
           >
             <div className="pointer-events-none absolute -left-6 top-6 h-16 w-16 rounded-full bg-[#f4efe8]" />
             <div className="pointer-events-none absolute -right-8 top-8 h-16 w-16 rounded-full bg-[#faf2e4]" />
@@ -331,7 +360,7 @@ export default function HomePage() {
         <section className="space-y-3">
           <SectionTitle title="参赛者20大持仓" href="/market/top-holdings" />
 
-          <div className="relative h-[234px] overflow-hidden rounded-[26px] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
+          <div className="relative h-[234px] overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
             <div className="pointer-events-none absolute left-3 top-6 h-7 w-7 rounded-full bg-[#ffe6bd]" />
             <div className="pointer-events-none absolute left-10 bottom-7 h-9 w-9 rounded-full bg-[#fff0d5]" />
             <div className="pointer-events-none absolute right-6 top-7 h-8 w-8 rounded-full bg-[#ffe5c1]" />
@@ -369,7 +398,7 @@ export default function HomePage() {
         <section className="space-y-3">
           <SectionTitle title="今日10大成交股票" href="/market/top-volume" />
 
-          <div className="overflow-hidden rounded-[26px] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
+          <div className="overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
             <TradeTrigger
               symbol={homeVolumeSnapshot.buy.symbol}
               className="grid w-full grid-cols-[1fr_auto] gap-4 border-b border-[#f2e7da] pb-4 text-left"
@@ -447,7 +476,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="relative overflow-hidden rounded-[26px] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
+          <div className="relative overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
             <div className="pointer-events-none absolute inset-y-6 right-8 w-[120px] rotate-12 rounded-[22px] border border-[#f4eadb] bg-[#fffaf3]/80" />
 
             <div className="relative">
@@ -484,7 +513,7 @@ export default function HomePage() {
         <section className="space-y-3">
           <SectionTitle title="排行榜" href="/ranking" />
 
-          <div className="overflow-hidden rounded-[26px] bg-white shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
+          <div className="overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
             <div className="grid grid-cols-[92px_1fr_auto] items-end gap-2 border-b border-[#f0e5d8] px-4 pb-3 pt-4">
               <div>
                 <p className="text-[14px] font-bold text-[#aa9781]">排名/变动</p>

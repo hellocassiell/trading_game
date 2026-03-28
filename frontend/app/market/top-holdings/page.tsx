@@ -3,7 +3,7 @@ import { ChevronLeft } from "lucide-react";
 
 import AppScreen from "../../../components/AppScreen";
 import { TradeTrigger } from "../../../components/TradeModal";
-import { topHoldings } from "../../../lib/mock-data";
+import { getTopHoldingsPageData } from "../../../lib/adapters/ranking";
 
 function trendColor(delta: string) {
   if (delta === "▲") {
@@ -17,6 +17,18 @@ function trendColor(delta: string) {
 }
 
 export default function TopHoldingsPage() {
+  const { status, rows: topHoldings, updatedAt } = getTopHoldingsPageData();
+
+  if (status === "error") {
+    return (
+      <AppScreen>
+        <div className="app-panel rounded-[28px] px-5 py-10 text-center">
+          <p className="text-[18px] font-black text-[#2a1b12]">持仓榜单加载失败</p>
+        </div>
+      </AppScreen>
+    );
+  }
+
   return (
     <AppScreen className="!px-0">
       <div className="min-h-full overflow-hidden bg-white">
@@ -76,7 +88,7 @@ export default function TopHoldingsPage() {
         </div>
 
         <div className="px-4 py-3 text-[11px] text-[#b5a89a]">
-          最後更新 2021/04/21 22:00 HKT
+          最後更新 {updatedAt}
         </div>
       </div>
     </AppScreen>
