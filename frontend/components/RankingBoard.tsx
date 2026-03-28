@@ -1,48 +1,56 @@
 import Link from "next/link";
-import { UserRound } from "lucide-react";
+import { Crown, UserRound } from "lucide-react";
 
 import SurfaceCard from "./SurfaceCard";
 import { rankingList } from "../lib/mock-data";
 
 export default function RankingBoard() {
   return (
-    <SurfaceCard className="px-2.5 py-1.5">
+    <SurfaceCard className="space-y-2 px-3 py-3">
       {rankingList.map((item, index) => (
         <Link
           key={`${item.rank}-${item.name}`}
-          href={item.current ? "/profile" : "/ranking"}
-          className={`flex items-center justify-between rounded-[4px] px-1.5 py-1.5 ${
-            item.current ? "bg-[#eef5ff]" : ""
+          href={"current" in item && item.current ? "/profile" : "/ranking"}
+          className={`flex items-center justify-between rounded-[18px] border px-3 py-2.5 ${
+            "current" in item && item.current
+              ? "border-[#f4d8b8] bg-[#fff4e5]"
+              : "border-[#f5ece2] bg-[#fffdf9]"
           }`}
         >
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-3">
             <div
-              className={`flex h-[18px] w-[18px] items-center justify-center rounded-full text-[8px] font-bold ${
-                index < 3
-                  ? "bg-[#fff1cf] text-[#f59e0b]"
-                  : "bg-[#f1f5f9] text-[#7c8798]"
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
+                index === 0
+                  ? "bg-[#fff3d1] text-[#d18a00]"
+                  : index < 3
+                    ? "bg-[#fbf3ea] text-[#8f7358]"
+                    : "bg-[#f9f2e9] text-[#b19880]"
               }`}
             >
-              {item.rank}
+              {index === 0 ? <Crown className="h-4 w-4" /> : item.rank}
             </div>
             <div
-              className={`flex h-6 w-6 items-center justify-center rounded-full ${
-                item.current
-                  ? "bg-gradient-to-br from-[#6b93ff] to-[#2b5ce5] text-white"
-                  : "bg-[#eef1f6] text-[#a3acb9]"
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                "current" in item && item.current
+                  ? "bg-[linear-gradient(180deg,#ffb45c_0%,#f38b1b_100%)] text-white"
+                  : "bg-[#f9f1e7] text-[#aa9075]"
               }`}
             >
-              <UserRound className="h-3 w-3" />
+              <UserRound className="h-5 w-5" />
             </div>
-            <p className="truncate text-[10px] font-medium text-[#5f6c80]">
-              {item.name}
-            </p>
+            <div className="min-w-0">
+              <p className="truncate text-[14px] font-semibold text-[#48566b]">
+                {item.name}
+              </p>
+              <p className="text-[12px] text-[var(--app-text-muted)]">
+                总资产 {item.amount}
+              </p>
+            </div>
           </div>
+
           <div className="text-right">
-            <p className="text-[10px] font-semibold text-[#5f6c80]">
-              {item.amount}
-            </p>
-            <p className="text-[8px] text-[#22c55e]">{item.gain}</p>
+            <p className="text-[15px] font-semibold text-[#46546a]">{item.amount}</p>
+            <p className="text-[13px] font-semibold text-[var(--app-green)]">{item.gain}</p>
           </div>
         </Link>
       ))}

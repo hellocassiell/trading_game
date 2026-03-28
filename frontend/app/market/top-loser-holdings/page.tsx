@@ -6,7 +6,15 @@ import { loserHoldings } from "../../../lib/mock-data";
 export default function TopLoserHoldingsPage() {
   return (
     <AppScreen>
-      <ScreenTopBar title="参赛者20大失败持仓" showBack backHref="/" />
+      <ScreenTopBar
+        title="参赛者20大失败持仓"
+        showBack
+        backHref="/"
+        compact
+        hideSubtitle
+        hideMetaRow
+        hideTrailing
+      />
       <MarketTable
         headerLeft="参赛者20大失败持仓"
         headerRight="跌幅金额"

@@ -2,118 +2,77 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ChartCandlestick,
-  Ellipsis,
-  House,
-  Medal,
-  UserRound,
-} from "lucide-react";
+import { ClipboardList, House, Menu, UserRound } from "lucide-react";
+
+import { useTradeModal } from "./TradeModal";
 
 const navItems = [
-  {
-    label: "主頁",
-    href: "/",
-    icon: House,
-  },
-  {
-    label: "個人",
-    href: "/profile",
-    icon: UserRound,
-  },
-  {
-    label: "排行",
-    href: "/ranking",
-    icon: Medal,
-  },
-  {
-    label: "更多",
-    href: "/assistant",
-    icon: Ellipsis,
-  },
-  {
-    label: "交易",
-    href: "/trade",
-    icon: ChartCandlestick,
-  },
+  { label: "主页", href: "/", icon: House },
+  { label: "个人", href: "/profile", icon: UserRound },
+  { label: "记录", href: "/records", icon: ClipboardList },
+  { label: "更多", href: "/more", icon: Menu },
 ] as const;
 
 export default function BottomNav() {
   const pathname = usePathname();
-
-  if (
-    pathname.startsWith("/assistant") ||
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/guest") ||
-    pathname.startsWith("/trade") ||
-    pathname.startsWith("/market")
-  ) {
-    return null;
-  }
+  const { openTrade } = useTradeModal();
 
   const activeHref = (() => {
-    if (
-      pathname.startsWith("/profile") ||
-      pathname.startsWith("/positions") ||
-      pathname.startsWith("/records")
-    ) {
+    if (pathname.startsWith("/profile")) {
       return "/profile";
     }
-    if (pathname.startsWith("/ranking")) {
-      return "/ranking";
+    if (pathname.startsWith("/records")) {
+      return "/records";
     }
-    if (pathname.startsWith("/assistant")) {
-      return "/assistant";
-    }
-    if (pathname.startsWith("/trade")) {
-      return "/trade";
-    }
-    if (pathname.startsWith("/market")) {
-      return "/";
+    if (pathname.startsWith("/more")) {
+      return "/more";
     }
     return "/";
   })();
 
   return (
-    <nav className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 pb-[env(safe-area-inset-bottom)]">
-      <div className="overflow-hidden border-t border-[#dce5f4] bg-white/98 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:rounded-t-[18px] md:border md:border-b-0">
-        <ul className="grid h-[60px] grid-cols-5 items-center px-1">
-          {navItems.map(({ label, href, icon: Icon }) => {
-            const isActive = href === activeHref;
-            const isTrade = label === "交易";
-            const itemColor = isActive ? "text-[#2b5ce5]" : "text-slate-400";
+    <nav className="fixed inset-x-0 bottom-0 z-30">
+      <div className="mx-auto w-full max-w-[430px]">
+        <div className="relative overflow-visible border-t border-[rgba(238,223,206,0.96)] bg-[linear-gradient(180deg,rgba(255,255,255,0.99)_0%,rgba(255,250,244,0.99)_100%)] px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-1.5 shadow-[0_-8px_20px_rgba(171,86,0,0.08)] backdrop-blur">
+          <div className="grid grid-cols-5 items-end gap-1">
+            {navItems.map(({ label, href, icon: Icon }) => {
+              const isActive = activeHref === href;
 
-            return (
-              <li key={label} className="flex justify-center">
+              return (
                 <Link
+                  key={label}
                   href={href}
-                  className={
-                    isTrade
-                      ? `flex h-8 min-w-[56px] items-center justify-center rounded-full px-3 text-[11px] font-semibold text-white shadow-[0_8px_18px_rgba(43,92,229,0.3)] ${
-                          isActive ? "bg-[#1e4fd7]" : "bg-[#2b5ce5]"
-                        }`
-                      : `relative flex h-full flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition ${itemColor}`
-                  }
+                  className={`flex min-h-[42px] flex-col items-center justify-center gap-0.5 rounded-[12px] px-1 text-[10px] font-bold transition-all ${
+                    isActive
+                      ? "bg-[linear-gradient(180deg,var(--app-orange-soft),#ffffff)] text-[var(--app-orange-dark)] shadow-[0_10px_20px_rgba(243,139,27,0.12)]"
+                      : "text-[var(--app-nav-muted)]"
+                  }`}
                 >
-                  {isTrade ? (
-                    <span>{label}</span>
-                  ) : (
-                    <>
-                      {isActive ? (
-                        <span className="absolute top-[6px] h-1 w-1 rounded-full bg-[#2b5ce5]" />
-                      ) : null}
-                      <Icon
-                        className="h-[18px] w-[18px]"
-                        strokeWidth={isActive ? 2.2 : 1.9}
-                      />
-                      <span>{label}</span>
-                    </>
-                  )}
+                  <span
+                    className={`h-0.5 w-4 rounded-full transition-opacity ${
+                      isActive
+                        ? "bg-[var(--app-orange)] opacity-100"
+                        : "opacity-0"
+                    }`}
+                  />
+                  <Icon
+                    className="h-[16px] w-[16px]"
+                    strokeWidth={isActive ? 2.5 : 1.8}
+                  />
+                  <span>{label}</span>
                 </Link>
-              </li>
-            );
-          })}
-        </ul>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => openTrade()}
+              className="flex min-h-[36px] items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] px-1 text-[9px] font-black tracking-[0.08em] text-white shadow-[0_6px_12px_rgba(243,139,27,0.16)] transition-transform active:scale-[0.98]"
+            >
+              <span>交易</span>
+            </button>
+          </div>
+        </div>
       </div>
     </nav>
   );

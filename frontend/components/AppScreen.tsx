@@ -10,7 +10,9 @@ export default function AppScreen({
   className = "",
 }: AppScreenProps) {
   return (
-    <div className={`space-y-2 bg-[#f5f7fb] text-[#4b5563] ${className}`}>
+    <div
+      className={`min-h-full bg-transparent px-[var(--app-gutter)] pb-4 pt-0 text-[var(--app-text)] ${className}`}
+    >
       {children}
     </div>
   );

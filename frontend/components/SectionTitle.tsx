@@ -13,12 +13,17 @@ export default function SectionTitle({
   actionLabel,
 }: SectionTitleProps) {
   return (
-    <div className="mb-1.5 flex items-center justify-between px-0.5">
-      <h2 className="text-[11px] font-semibold text-[#4b5563]">{title}</h2>
+    <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--app-orange)]" />
+        <h2 className="text-[13px] font-bold tracking-[0.01em] text-[#4a576a]">
+          {title}
+        </h2>
+      </div>
       {href && actionLabel ? (
         <Link
           href={href}
-          className="flex items-center gap-0.5 text-[9px] font-medium text-[#75a0ff]"
+          className="inline-flex items-center gap-0.5 text-[10px] font-medium text-[var(--app-orange-dark)]"
         >
           {actionLabel}
           <ChevronRight className="h-3 w-3" />

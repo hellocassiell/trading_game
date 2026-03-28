@@ -2,9 +2,8 @@ import Link from "next/link";
 import {
   Bell,
   ChevronLeft,
-  Ellipsis,
+  Menu,
   Search,
-  Share2,
 } from "lucide-react";
 
 import { appMeta } from "../lib/mock-data";
@@ -15,6 +14,11 @@ type ScreenTopBarProps = {
   showBack?: boolean;
   showSearch?: boolean;
   compact?: boolean;
+  hideLeading?: boolean;
+  hideTitle?: boolean;
+  hideSubtitle?: boolean;
+  hideMetaRow?: boolean;
+  hideTrailing?: boolean;
 };
 
 export default function ScreenTopBar({
@@ -23,44 +27,79 @@ export default function ScreenTopBar({
   showBack = false,
   showSearch = false,
   compact = false,
+  hideLeading = false,
+  hideTitle = false,
+  hideSubtitle = false,
+  hideMetaRow = false,
+  hideTrailing = false,
 }: ScreenTopBarProps) {
+  const minimalHeader = hideLeading && hideTitle;
+  const shellClass = minimalHeader
+    ? "sticky top-0 z-20 -mx-[var(--app-gutter)] mb-3 overflow-hidden bg-[linear-gradient(180deg,#ffb45a_0%,var(--app-orange)_56%,var(--app-orange-dark)_100%)] px-[var(--app-gutter)] pb-2 pt-[max(env(safe-area-inset-top),10px)] text-white shadow-[0_12px_24px_rgba(171,86,0,0.16)]"
+    : "sticky top-0 z-20 -mx-[var(--app-gutter)] mb-3 overflow-hidden rounded-b-[24px] bg-[linear-gradient(180deg,#ffb45a_0%,var(--app-orange)_56%,var(--app-orange-dark)_100%)] px-[var(--app-gutter)] pb-2 pt-[max(env(safe-area-inset-top),10px)] text-white shadow-[0_12px_24px_rgba(171,86,0,0.16)]";
+
   return (
-    <div className="overflow-hidden rounded-[4px] border border-[#dce5f4] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <div className="flex h-9 items-center justify-between bg-[#4e79e8] px-2.5 text-white">
-        <div className="flex items-center gap-1.5">
-          {showBack ? (
-            <Link
-              href={backHref ?? "/"}
-              className="flex h-5 w-5 items-center justify-center rounded-full text-blue-100"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </Link>
+    <div className={shellClass}>
+      <div className="flex items-center justify-between">
+        {hideLeading ? (
+          <div className={minimalHeader ? "h-0 w-0" : "h-8 w-8"} />
+        ) : showBack ? (
+          <Link
+            href={backHref ?? "/"}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/14 text-white active:bg-white/20"
+            aria-label="返回"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/14 text-white active:bg-white/20"
+            aria-label="菜单"
+          >
+            <Menu className="h-4.5 w-4.5" />
+          </button>
+        )}
+
+        <div className={`flex flex-1 flex-col items-center ${minimalHeader ? "px-0" : "px-3"}`}>
+          {!hideTitle ? (
+            <span className="text-[12px] font-black leading-none text-white">{title}</span>
+          ) : (
+            <span className={minimalHeader ? "hidden" : "h-[11px]"} />
+          )}
+          {!compact && !hideTitle && !hideSubtitle ? (
+            <span className="mt-1 text-[8px] font-medium leading-none tracking-[0.12em] text-white/78">
+              {appMeta.brand} x {appMeta.sponsor}
+            </span>
           ) : null}
-          <div className="text-[9px] font-semibold tracking-[0.04em]">
-            {appMeta.brand}
-            <span className="ml-1 text-blue-100">+</span>
-          </div>
         </div>
-        <div className="flex items-center gap-2 text-blue-100">
-          {showSearch ? <Search className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
-          <Bell className="h-3.5 w-3.5" />
-          <Ellipsis className="h-3.5 w-3.5" />
-        </div>
+
+        {hideTrailing ? (
+          <div className="h-8 w-8" />
+        ) : (
+          <button
+            type="button"
+            className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/14 text-white active:bg-white/20"
+            aria-label={showSearch ? "搜索" : "通知"}
+          >
+            {showSearch ? (
+              <Search className="h-4.5 w-4.5" />
+            ) : (
+              <>
+                <Bell className="h-4.5 w-4.5" />
+                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#fff3df]" />
+              </>
+            )}
+          </button>
+        )}
       </div>
 
-      <div className={`border-b border-[#eaf0fa] px-2.5 ${compact ? "py-1.5" : "py-2"}`}>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="rounded-[2px] bg-[#ffefe0] px-1 py-[1px] text-[9px] font-semibold text-[#f59e0b]">
-              美
-            </span>
-            <span className="truncate text-[10px] font-semibold text-[#606f86]">
-              {title}
-            </span>
-          </div>
-          <span className="shrink-0 text-[9px] text-[#8a94a6]">比赛介绍</span>
+      {!compact && !minimalHeader && !hideMetaRow ? (
+        <div className="mt-2 flex items-center justify-between text-[9px] text-white/78">
+            <span>港股模拟投资比赛</span>
+            <span>04 MAY 2021</span>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -1,86 +1,110 @@
 import Link from "next/link";
-import { Star, Trophy, UserRound } from "lucide-react";
-
-import MiniLineChart from "./MiniLineChart";
-import SurfaceCard from "./SurfaceCard";
-import { portfolioSummary, profile } from "../lib/mock-data";
+import { Bell, Trophy, UserRound } from "lucide-react";
+import { profile } from "../lib/mock-data";
 
 type ProfileSummaryCardProps = {
   href?: string;
-  showStar?: boolean;
-  showHoldings?: boolean;
   className?: string;
-  assetLabel?: string;
-  totalUsd?: string;
-  totalHkd?: string;
 };
 
 export default function ProfileSummaryCard({
   href,
-  showStar = false,
-  showHoldings = true,
   className = "",
-  assetLabel = "总资产金额",
-  totalUsd = `${profile.totalAssetsUsd} 美元`,
-  totalHkd = `${profile.portfolioUsd} 港元`,
 }: ProfileSummaryCardProps) {
   const content = (
-    <SurfaceCard className={className}>
-      <div className="flex items-start gap-2">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#eef1f6] text-[#a6afbc]">
-          <UserRound className="h-5 w-5" />
+    <div
+      className={`overflow-hidden bg-[linear-gradient(180deg,#ffb85f_0%,#ff9523_56%,#db7400_100%)] px-4 pb-5 pt-[max(env(safe-area-inset-top),14px)] text-white shadow-[0_18px_34px_rgba(171,86,0,0.16)] ${className}`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-[15px] font-black tracking-[0.03em]">
+          <span>AASTOCKS</span>
+          <span className="text-[11px] opacity-85">↗</span>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex justify-between gap-2">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1">
-                <p className="truncate text-[11px] font-semibold text-[#4f5d73]">
-                  {profile.name}
-                </p>
-                <Trophy className="h-3 w-3 text-[#f6b53b]" />
-                {showStar ? <Star className="h-3 w-3 text-[#4f79e8]" /> : null}
-              </div>
-              <p className="mt-0.5 truncate text-[8px] text-[#b0b8c5]">
-                {profile.description}
-              </p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="text-[8px] text-[#b0b8c5]">排名</p>
-              <p className="text-[10px] font-semibold text-[#707c8f]">
-                {profile.ranking}
-              </p>
-              <p className="text-[8px] text-[#b0b8c5]">2 次</p>
-            </div>
-          </div>
-
-          <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
-            {portfolioSummary.map((item) => (
-              <div key={item.label}>
-                <p className="text-[8px] text-[#adb7c5]">{item.label}</p>
-                <p className="truncate text-[9px] font-semibold text-[#657285]">
-                  {item.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {showHoldings ? (
-            <div className="mt-2 flex items-end justify-between rounded-[4px] bg-[#fbfdff] px-2 py-1.5">
-              <div>
-                <p className="text-[8px] text-[#adb7c5]">{assetLabel}</p>
-                <p className="text-[11px] font-bold leading-tight text-[#4772e8]">
-                  {totalUsd}
-                </p>
-                <p className="text-[11px] font-bold leading-tight text-[#4772e8]">
-                  {totalHkd}
-                </p>
-              </div>
-              <MiniLineChart />
-            </div>
-          ) : null}
+        <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/16 text-white">
+          <Bell className="h-4.5 w-4.5" />
+          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ffe06a]" />
         </div>
       </div>
-    </SurfaceCard>
+
+      <div className="mt-4 overflow-hidden rounded-[24px] bg-white text-[#5a4733] shadow-[0_18px_32px_rgba(171,86,0,0.14)]">
+        <div className="px-4 pb-3 pt-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ece7de]">
+              <UserRound className="h-7 w-7 text-[#d7d0c7]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-[17px] font-black text-[#31343a]">{profile.name}</p>
+                <div className="flex shrink-0 items-center gap-1 rounded-full bg-[#fff4de] px-2.5 py-1 text-[11px] font-black text-[#d97a00]">
+                  <Trophy className="h-3.5 w-3.5" />
+                  <span>排名 {profile.ranking}</span>
+                  <span className="text-[var(--app-green)]">↑ 12</span>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-[1fr_auto] gap-x-2 gap-y-1 text-[11px] leading-5">
+                <span className="text-[#7f7364]">每天可供交易次数</span>
+                <span className="font-black text-[#5c4a37]">尚馀 16次</span>
+                <span className="text-[#7f7364]">每周需交易4次</span>
+                <span className="font-black text-[#d9534f]">尚欠 2次</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 border-t border-[#f1e6d9] pt-3">
+            <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-[12px] leading-6">
+              <span className="text-[#8e7d67]">起始资金</span>
+              <span className="font-black text-[#3f3b34]">HK$ 1,000,000.000</span>
+              <span className="text-[#8e7d67]">额外奖赏</span>
+              <span className="font-black text-[#3f3b34]">HK$ 50,000.000</span>
+              <span className="text-[#8e7d67]">证券参考市值</span>
+              <span className="font-black text-[#3f3b34]">HK$ 513,910.000</span>
+              <span className="text-[#8e7d67]">可投资余额</span>
+              <span className="font-black text-[#ef7c00]">HK$ 947,321.640</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-[#f5ebdf] px-4 pb-4 pt-3">
+          <p className="text-[12px] font-black text-[#ef7c00]">资产总值</p>
+          <p className="mt-1 text-[18px] font-black text-[#ef7c00]">HK$ 947,321.640</p>
+
+          <div className="relative mt-3 rounded-[16px] bg-[linear-gradient(180deg,#fffdf9,#fff4e5)] px-3 pb-8 pt-3">
+            <svg className="h-[82px] w-full" viewBox="0 0 300 82" preserveAspectRatio="none">
+              <path
+                d="M 10 62 C 48 60, 84 58, 118 36 S 190 20, 224 12 S 262 10, 286 8"
+                fill="none"
+                stroke="#ef7c00"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+              />
+              <circle cx="10" cy="62" r="4.5" fill="#ef7c00" />
+              <circle cx="76" cy="60" r="4.5" fill="#ef7c00" />
+              <circle cx="146" cy="36" r="4.5" fill="#ef7c00" />
+              <circle cx="214" cy="14" r="4.5" fill="#ef7c00" />
+              <circle cx="286" cy="8" r="4.5" fill="#ef7c00" />
+            </svg>
+            <div className="absolute inset-x-3 bottom-3 flex justify-between text-[10px] font-semibold text-[#b1a191]">
+              <span>26/04</span>
+              <span>27/04</span>
+              <span>28/04</span>
+              <span>29/04</span>
+              <span>今日</span>
+            </div>
+          </div>
+
+          <p className="mt-3 text-[10px] text-[#baa58d]">资料更新 2021/04/21 22:00 HKT</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between px-1">
+        <h3 className="text-[23px] font-black">港股持仓</h3>
+        <div className="flex items-center gap-1.5 rounded-full bg-white/16 px-3 py-1.5 text-[12px] font-bold whitespace-nowrap">
+          <span>🇭🇰</span>
+          <span>货币 (港元)</span>
+        </div>
+      </div>
+    </div>
   );
 
   return href ? (

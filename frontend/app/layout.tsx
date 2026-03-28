@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
-import BottomNav from "../components/BottomNav";
+import AppFrame from "../components/AppFrame";
+import { TradeModalProvider } from "../components/TradeModal";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "智财美股投资大赛",
-  description: "移动端 H5 模拟交易应用",
+  title: "智财投资大赛2020",
+  description: "港股模拟交易移动端高保真原型",
 };
 
 export const viewport: Viewport = {
@@ -15,7 +16,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#2563eb",
+  themeColor: "#f38b1b",
 };
 
 type RootLayoutProps = {
@@ -25,14 +26,10 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="zh-CN">
-      <body className="min-h-screen bg-slate-100 text-slate-900 antialiased">
-        <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#f3f6fb] shadow-none md:overflow-hidden md:shadow-xl">
-          <main className="min-h-0 flex-1 overflow-y-auto pb-24 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {children}
-          </main>
-
-          <BottomNav />
-        </div>
+      <body className="min-h-screen antialiased">
+        <TradeModalProvider>
+          <AppFrame>{children}</AppFrame>
+        </TradeModalProvider>
       </body>
     </html>
   );
