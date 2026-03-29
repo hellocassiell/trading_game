@@ -23,7 +23,7 @@ export default function TopHoldingsPage() {
     return (
       <AppScreen>
         <div className="app-panel rounded-[28px] px-5 py-10 text-center">
-          <p className="text-[18px] font-black text-[#2a1b12]">持仓榜单加载失败</p>
+          <p className="text-page font-black text-[#2a1b12]">持仓榜单加载失败</p>
         </div>
       </AppScreen>
     );
@@ -41,11 +41,11 @@ export default function TopHoldingsPage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </Link>
-            <h1 className="text-[18px] font-black">参赛者20大港股持仓</h1>
+            <h1 className="text-page font-black">参赛者20大港股持仓</h1>
           </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_auto] items-center border-b border-[#ece3d8] px-4 py-2.5 text-[12px] font-semibold text-[#b3a79b]">
+        <div className="text-helper grid grid-cols-[1fr_auto] items-center border-b border-[#ece3d8] px-4 py-2.5 font-semibold text-[#b3a79b]">
           <span>代號及名稱</span>
           <span>持倉總額/變動</span>
         </div>
@@ -66,19 +66,19 @@ export default function TopHoldingsPage() {
                 className="grid min-h-[52px] w-full grid-cols-[1fr_auto] items-center border-b border-[#f1e8dd] px-4 py-3 text-left active:bg-[#fffaf4]"
               >
                 <div className="flex min-w-0 items-baseline gap-2">
-                  <span className="shrink-0 text-[18px] font-black leading-none text-[#2f2f31]">
+                  <span className="text-title shrink-0 font-black leading-none text-[#2f2f31]">
                     {item.symbol}
                   </span>
-                  <span className="truncate text-[17px] font-bold leading-none text-[#3e4045]">
+                  <span className="text-body truncate font-bold leading-none text-[#3e4045]">
                     {item.name}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3 pl-3">
-                  <span className="whitespace-nowrap text-[17px] font-black leading-none text-[#2f2f31]">
+                  <span className="text-title whitespace-nowrap font-black leading-none text-[#2f2f31]">
                     {item.value}
                   </span>
-                  <span className={`text-[22px] font-black leading-none ${trendColor(item.delta)}`}>
+                  <span className={`text-page font-black leading-none ${trendColor(item.delta)}`}>
                     {item.delta === "▲" ? "↑" : item.delta === "▼" ? "↓" : "–"}
                   </span>
                 </div>
@@ -87,7 +87,7 @@ export default function TopHoldingsPage() {
           </div>
         </div>
 
-        <div className="px-4 py-3 text-[11px] text-[#b5a89a]">
+        <div className="text-helper px-4 py-3 text-[#b5a89a]">
           最後更新 {updatedAt}
         </div>
       </div>

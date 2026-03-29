@@ -11,7 +11,7 @@ export default function AppScreen({
 }: AppScreenProps) {
   return (
     <div
-      className={`min-h-full bg-transparent px-[var(--app-gutter)] pb-4 pt-0 text-[var(--app-text)] ${className}`}
+      className={`min-h-full bg-transparent px-[var(--app-gutter)] pb-4 pt-[max(env(safe-area-inset-top),0px)] text-[var(--app-text)] ${className}`}
     >
       {children}
     </div>

@@ -22,8 +22,8 @@ export default function MarketTable({
   negative = false,
 }: MarketTableProps) {
   return (
-    <SurfaceCard className="px-3 py-3">
-      <div className="grid grid-cols-[1fr_auto] items-center border-b border-[#f1e8dd] px-1.5 pb-2 text-[9px] text-[#9aa4b3]">
+    <SurfaceCard tone="flat" className="px-3 py-3">
+      <div className="text-helper grid grid-cols-[1fr_auto] items-center border-b border-[#f1e8dd] px-1.5 pb-2 text-[#9aa4b3]">
         <span>{headerLeft}</span>
         <span>{headerRight}</span>
       </div>
@@ -36,12 +36,12 @@ export default function MarketTable({
             className="grid grid-cols-[1fr_auto] items-center border-b border-dashed border-[#f1e8dd] px-1.5 py-2 last:border-b-0"
           >
             <div className="flex items-center gap-1">
-              <span className="text-[11px] font-semibold text-[#4f5d73]">
+              <span className="text-body font-semibold text-[#4f5d73]">
                 {item.symbol}
               </span>
-              <span className="text-[9px] text-[#adb7c5]">{item.name}</span>
+              <span className="text-helper text-[#8f7a66]">{item.name}</span>
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#5f6c80]">
+            <div className="text-body flex items-center gap-1 font-semibold text-[#5f6c80]">
               <span>{item.value}</span>
               {item.delta ? (
                 <span className={negative || item.delta === "▼" ? "text-[#ef4444]" : "text-[#22c55e]"}>

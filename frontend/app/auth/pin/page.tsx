@@ -1,3 +1,4 @@
+import Link from "next/link";
 import AppScreen from "../../../components/AppScreen";
 import { getAuthPinViewModel } from "../../../lib/adapters/auth";
 
@@ -6,39 +7,51 @@ export default function AuthPinPage() {
 
   return (
     <AppScreen className="!px-0 !pb-0">
-      <div className="min-h-[100dvh] bg-[linear-gradient(180deg,#fff7ec_0%,#ffe8cf_60%,#ffd5a8_100%)] text-[#2f1f12]">
-        <div className="px-4 pb-10 pt-[max(env(safe-area-inset-top),14px)] text-center">
-          <p className="text-[12px] font-black uppercase tracking-[0.3em] text-[#c9781a]">验证身份</p>
-          <h1 className="mt-2 text-[24px] font-black text-[#2c1a10]">{viewModel.title}</h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-[#5c4734]">{viewModel.description}</p>
+      <div className="min-h-[100dvh] bg-[#f1f1f1] text-[#1e1e1e]">
+        <div className="flex min-h-[100dvh] flex-col px-5 pb-[max(env(safe-area-inset-bottom),20px)] pt-[max(env(safe-area-inset-top),18px)]">
+          <div className="flex justify-end">
+            <Link
+              href={viewModel.closeHref}
+              aria-label="关闭"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[19px] leading-none text-[#282828]"
+            >
+              ×
+            </Link>
+          </div>
 
-          <div className="mx-auto mt-6 flex max-w-[300px] items-center justify-between gap-2 text-[22px] font-black text-[#2f1f12]">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <span
-                key={index}
-                className="inline-flex h-16 w-12 items-center justify-center rounded-[12px] border border-dashed border-[#f0d7ba] bg-white"
+          <div className="flex flex-1 items-center justify-center">
+            <div className="relative h-[360px] w-[300px]">
+              <div className="absolute inset-[16px] rounded-full border border-[#e2cbac]" />
+              <div className="absolute inset-[52px] rounded-full bg-[#edd8bf]/40" />
+
+              <Link
+                href={viewModel.centerAction.href}
+                className="absolute inset-[76px] flex items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffb057_0%,#f18a1b_100%)] text-center shadow-[0_20px_36px_rgba(229,132,44,0.24)]"
               >
-                -
-              </span>
-            ))}
+                <span className="whitespace-pre-line text-[16px] font-medium leading-[1.3] text-white">
+                  {viewModel.centerAction.label}
+                </span>
+              </Link>
+
+              <div className="absolute left-0 top-[70px] flex h-[66px] w-[66px] items-center justify-center rounded-full bg-[#ffd9a9] text-[28px] shadow-[0_10px_18px_rgba(224,143,61,0.18)]">
+                {viewModel.orbitItems[0]?.icon}
+              </div>
+              <div className="absolute right-0 top-[84px] flex h-[66px] w-[66px] items-center justify-center rounded-full bg-[#ffe8cb] text-[27px] font-semibold text-[#d68734] shadow-[0_10px_18px_rgba(224,143,61,0.16)]">
+                {viewModel.orbitItems[1]?.icon}
+              </div>
+              <div className="absolute bottom-[18px] left-[26px] flex h-[66px] w-[66px] items-center justify-center rounded-full bg-[#ffecd3] text-[27px] text-[#d08c4a] shadow-[0_10px_18px_rgba(224,143,61,0.12)]">
+                {viewModel.orbitItems[2]?.icon}
+              </div>
+              <div className="absolute bottom-[18px] right-[18px] flex h-[66px] w-[66px] items-center justify-center rounded-full bg-[#ffe6c5] text-[24px] shadow-[0_10px_18px_rgba(224,143,61,0.15)]">
+                {viewModel.orbitItems[3]?.icon}
+              </div>
+              <div className="absolute left-[42px] top-[146px] h-[14px] w-[14px] rounded-full bg-[#f7c767]" />
+              <div className="absolute right-[56px] top-[102px] h-[14px] w-[14px] rounded-full bg-[#cfb8e4]" />
+              <div className="absolute right-[26px] top-[206px] h-[14px] w-[14px] rounded-full bg-[#64d7bb]" />
+            </div>
           </div>
 
-          <div className="mt-6 flex flex-col gap-3">
-            <button
-              type="button"
-              className="rounded-[16px] bg-[var(--app-orange)] px-4 py-3 text-[15px] font-black text-white shadow-[0_14px_28px_rgba(255,140,26,0.26)]"
-            >
-              提交验证码
-            </button>
-            <button
-              type="button"
-              className="rounded-[16px] border border-[#f0d7ba] bg-white px-4 py-3 text-[14px] font-semibold text-[#c9781a]"
-            >
-              {viewModel.timerLabel}
-            </button>
-          </div>
-
-          <p className="mt-6 text-[11px] text-[#7f6751]">{viewModel.supportInfo}</p>
+          <div className="pb-2 text-center text-[11px] text-[#8f8f8f]">{viewModel.footer}</div>
         </div>
       </div>
     </AppScreen>

@@ -2,6 +2,7 @@ package com.simtrade.backend.controller;
 
 import com.simtrade.backend.common.Result;
 import com.simtrade.backend.dto.TradeOrderCancelResult;
+import com.simtrade.backend.dto.TradeOrderAmendRequest;
 import com.simtrade.backend.dto.TradeOrderCreateRequest;
 import com.simtrade.backend.dto.TradeOrderPreviewResult;
 import com.simtrade.backend.dto.TradeOrderSubmitResult;
@@ -69,6 +70,15 @@ public class TradeOrderV1Controller {
         data.setReleasedCash(calculateReleasedCash(canceledOrder));
         data.setReleasedQuantity(calculateReleasedQuantity(canceledOrder));
         return Result.success(data);
+    }
+
+    @PostMapping("/{orderId}/amend")
+    public Result<Map<String, Object>> amendOrder(
+            @RequestHeader(value = "X-User-Id", defaultValue = "u_10001") String userId,
+            @PathVariable("orderId") String orderId,
+            @Validated @RequestBody TradeOrderAmendRequest request) {
+        Order amendedOrder = orderService.amendOrderV1(userId, orderId, request);
+        return Result.success(viewQueryService.toOrderView(amendedOrder));
     }
 
     @GetMapping("/active")

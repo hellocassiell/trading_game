@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -14,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { TradeTrigger } from "../components/TradeModal";
+import { readAuthSession } from "../lib/adapters/auth";
+import { tradingApiClient } from "../lib/api";
 import { getHomePageData } from "../lib/adapters/home";
 
 function SectionTitle({
@@ -25,11 +30,11 @@ function SectionTitle({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-[21px] font-black leading-none text-[#24180f]">{title}</h2>
+      <h2 className="text-page font-black leading-none text-[#24180f]">{title}</h2>
       {href ? (
         <Link
           href={href}
-          className="inline-flex items-center gap-0.5 text-[11px] font-bold text-[var(--app-orange-dark)]"
+          className="text-label inline-flex items-center gap-0.5 font-bold text-[var(--app-orange-dark)]"
         >
           更多
           <ChevronRight className="h-4 w-4" />
@@ -109,13 +114,69 @@ export default function HomePage() {
     weeklyFlyers: homeWeeklyFlyers,
     rankingRows: homeRankingRows,
   } = getHomePageData();
+  const [homeSummaryState, setHomeSummaryState] = useState<Record<keyof typeof homeSummaryCard, string>>({
+    ...homeSummaryCard,
+  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSummary() {
+      try {
+        const session = readAuthSession();
+        const loggedIn = Boolean(session?.userId || session?.phone);
+        if (!cancelled) {
+          setIsLoggedIn(loggedIn);
+        }
+        if (!loggedIn) {
+          return;
+        }
+        const account = await tradingApiClient.getAccountAssets(session?.userId);
+        if (cancelled) {
+          return;
+        }
+        setHomeSummaryState({
+          ...homeSummaryCard,
+          name: session?.nickname || account.nickname || homeSummaryState.name,
+          rank: String(account.rank),
+          rankRise: String(account.rankDelta),
+          dailyTradesValue: `${account.dailyTradesRemaining}次`,
+          requiredTrades: `每周需交易${account.weeklyTradesRequired}次`,
+          requiredTradesValue: `${account.weeklyTradesRemaining}次`,
+          referenceValue: account.securitiesMarketValue.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }),
+          cash: account.cashAvailable.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }),
+          totalAssets: account.totalAssets.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }),
+          updatedAt: account.updatedAt,
+        });
+      } catch {
+        if (!cancelled) {
+          setIsLoggedIn(false);
+        }
+      }
+    }
+
+    void loadSummary();
+    return () => {
+      cancelled = true;
+    };
+  }, [homeSummaryCard]);
 
   if (status === "error") {
     return (
       <div className="px-[var(--app-gutter)] py-10">
         <div className="app-panel rounded-[28px] px-5 py-8 text-center">
-          <p className="text-[18px] font-black text-[#2a1b12]">主页加载失败</p>
-          <p className="mt-2 text-[13px] text-[#9d8162]">请稍后再试，或返回上一页重试。</p>
+          <p className="text-page font-black text-[#2a1b12]">主页加载失败</p>
+          <p className="text-helper mt-2 text-[#9d8162]">请稍后再试，或返回上一页重试。</p>
         </div>
       </div>
     );
@@ -125,7 +186,7 @@ export default function HomePage() {
     return (
       <div className="px-[var(--app-gutter)] py-10">
         <div className="app-panel rounded-[28px] px-5 py-8 text-center">
-          <p className="text-[18px] font-black text-[#2a1b12]">暂无赛事资料</p>
+          <p className="text-page font-black text-[#2a1b12]">暂无赛事资料</p>
         </div>
       </div>
     );
@@ -159,7 +220,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between rounded-[14px] bg-white px-3 py-2 text-[#6b4a21] shadow-[0_10px_22px_rgba(98,56,10,0.12)]">
+        <div className="mt-4 flex items-center justify-between rounded-[14px] bg-white px-3 py-2 text-[#6b4a21] shadow-[0_10px_20px_rgba(98,56,10,0.12)]">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#fff0d8] text-[var(--app-orange-dark)]">
               <Trophy className="h-4 w-4" />
@@ -174,7 +235,7 @@ export default function HomePage() {
             <p className="text-[11px] font-semibold tracking-[0.14em] text-white/78">
               HONG KONG STOCK TRADING GAME
             </p>
-            <h1 className="mt-1 text-[26px] font-black leading-none">赛事统计</h1>
+            <h1 className="mt-1 text-[22px] font-black leading-none">赛事统计</h1>
           </div>
           <div className="inline-flex items-center gap-1 rounded-full bg-white/18 px-3 py-1.5 text-[12px] font-bold">
             <span className="text-[15px]">🇭🇰</span>
@@ -228,21 +289,22 @@ export default function HomePage() {
 
             <div className="min-w-0">
               <p className="text-[15px] font-black leading-tight text-[#392416]">想赚取</p>
-              <p className="mt-1 text-[22px] font-black leading-tight text-[var(--app-orange-dark)]">
-                $500,000港元模拟交易资金？
+              <p className="mt-1 text-[17px] font-black leading-tight text-[var(--app-orange-dark)]">
+                HK1,000,000港元模拟交易资金？
               </p>
               <p className="mt-1.5 text-[13px] font-bold text-[#f18917]">查看详情</p>
             </div>
           </div>
         </Link>
 
+        {isLoggedIn ? (
         <section className="overflow-hidden rounded-[24px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div className="h-12 w-12 rounded-full bg-[#f0ece7]" />
               <div className="min-w-0">
-                <p className="truncate text-[22px] font-black leading-none text-[#26180f]">
-                  {homeSummaryCard.name}
+                <p className="truncate text-[16px] font-black leading-none text-[#26180f]">
+                  {homeSummaryState.name}
                 </p>
               </div>
             </div>
@@ -250,23 +312,23 @@ export default function HomePage() {
             <div className="shrink-0 rounded-full bg-[#fff4e5] px-3 py-1.5 text-[13px] font-black text-[#6b4a21]">
               <span className="inline-flex items-center gap-1">
                 <Trophy className="h-4 w-4 text-[var(--app-orange-dark)]" />
-                排名 {homeSummaryCard.rank}
-                <span className="text-[#2eb568]">↑ {homeSummaryCard.rankRise}</span>
+                排名 {homeSummaryState.rank}
+                <span className="text-[#2eb568]">↑ {homeSummaryState.rankRise}</span>
               </span>
             </div>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-4 text-[14px] font-bold text-[#4d3826]">
             <div>
-              <p>{homeSummaryCard.dailyTrades}</p>
-              <p className="mt-1">{homeSummaryCard.requiredTrades}</p>
+              <p>{homeSummaryState.dailyTrades}</p>
+              <p className="mt-1">{homeSummaryState.requiredTrades}</p>
             </div>
             <div className="text-right">
               <p>
-                尚余 <span className="text-[20px] font-black">{homeSummaryCard.dailyTradesValue}</span>
+                尚余 <span className="text-[20px] font-black">{homeSummaryState.dailyTradesValue}</span>
               </p>
               <p className="mt-1">
-                尚欠 <span className="text-[20px] font-black text-[#ef655d]">{homeSummaryCard.requiredTradesValue}</span>
+                尚欠 <span className="text-[20px] font-black text-[#ef655d]">{homeSummaryState.requiredTradesValue}</span>
               </p>
             </div>
           </div>
@@ -275,25 +337,26 @@ export default function HomePage() {
             <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#7a624a]">
               <span>证券参考市值</span>
               <span className="text-[18px] font-black text-[#291b12]">
-                {homeSummaryCard.referenceValue} 港元
+                {homeSummaryState.referenceValue} 港元
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#7a624a]">
               <span>可投资馀额</span>
-              <span className="text-[18px] font-black text-[#291b12]">{homeSummaryCard.cash} 港元</span>
+              <span className="text-[18px] font-black text-[#291b12]">{homeSummaryState.cash} 港元</span>
             </div>
             <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#5f472d]">
               <span>资产总值</span>
-              <span className="text-[22px] font-black text-[var(--app-orange-dark)]">
-                {homeSummaryCard.totalAssets} 港元
+              <span className="text-[20px] font-black text-[var(--app-orange-dark)]">
+                {homeSummaryState.totalAssets} 港元
               </span>
             </div>
           </div>
 
           <p className="mt-3 text-[11px] font-medium text-[#b19573]">
-            资料更新 {homeSummaryCard.updatedAt}
+            资料更新 {homeSummaryState.updatedAt}
           </p>
         </section>
+        ) : null}
 
         <section className="space-y-3">
           <SectionTitle title="星级参赛者" href="/ranking" />
@@ -325,7 +388,7 @@ export default function HomePage() {
               <div className="h-12 w-12 shrink-0 rounded-full bg-[#f0ece7]" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                    <p className="text-[22px] font-black leading-none text-[#26180f]">
+                    <p className="text-[20px] font-black leading-none text-[#26180f]">
                       {homeStarParticipants.featured.name}
                     </p>
                     <span className="inline-flex items-center gap-1 rounded-full bg-[#fff2dc] px-3 py-1 text-[13px] font-black text-[#6e4b21]">
@@ -358,7 +421,7 @@ export default function HomePage() {
         </section>
 
         <section className="space-y-3">
-          <SectionTitle title="参赛者20大持仓" href="/market/top-holdings" />
+          <SectionTitle title="参赛者20大港股持仓" href="/market/top-holdings" />
 
           <div className="relative h-[234px] overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
             <div className="pointer-events-none absolute left-3 top-6 h-7 w-7 rounded-full bg-[#ffe6bd]" />
@@ -382,8 +445,8 @@ export default function HomePage() {
                   className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[radial-gradient(circle_at_top,#ffbf73_0%,#ff9220_62%,#de7600_100%)] text-center text-white shadow-[0_18px_24px_rgba(230,118,0,0.18)]"
                 >
                   <span className="text-[11px] font-black leading-none opacity-90">{item.rank}</span>
-                  <span className="mt-1 text-[22px] font-black leading-none">{item.symbol}</span>
-                  <span className="mt-1 text-[22px] font-black leading-none">{item.value}</span>
+                  <span className="mt-1 text-[20px] font-black leading-none">{item.symbol}</span>
+                  <span className="mt-1 text-[20px] font-black leading-none">{item.value}</span>
                   <span className="mt-1 text-[12px] font-bold leading-none opacity-95">{item.unit}</span>
                 </TradeTrigger>
               </div>
@@ -396,7 +459,7 @@ export default function HomePage() {
         </section>
 
         <section className="space-y-3">
-          <SectionTitle title="今日10大成交股票" href="/market/top-volume" />
+          <SectionTitle title="今日10大成交港股" href="/market/top-volume" />
 
           <div className="overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
             <TradeTrigger
@@ -477,7 +540,7 @@ export default function HomePage() {
           </div>
 
           <div className="relative overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
-            <div className="pointer-events-none absolute inset-y-6 right-8 w-[120px] rotate-12 rounded-[22px] border border-[#f4eadb] bg-[#fffaf3]/80" />
+            <div className="pointer-events-none absolute inset-y-6 right-8 w-[120px] rotate-12 rounded-[20px] border border-[#f4eadb] bg-[#fffaf3]/80" />
 
             <div className="relative">
               <p className="text-[24px] font-black leading-none text-[#26180f]">

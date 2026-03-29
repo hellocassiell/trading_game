@@ -35,3 +35,7 @@ mybatis-plus:
 # 第三方行情 AOB 接口配置
 aob:
   host: http://api.aob.example.com
+
+app:
+  cors:
+    allowed-origin-patterns: http://localhost:*,http://127.0.0.1:*

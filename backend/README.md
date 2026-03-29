@@ -95,3 +95,34 @@ Verify data reached MySQL:
 ```bash
 mysql -u root -ppassword -D simtrade -e "SELECT id,user_id,stock_code,type,status,create_time FROM t_order ORDER BY create_time DESC LIMIT 5;"
 ```
+
+## Current API status
+
+The backend currently exposes these first-batch competition APIs:
+
+- `GET /api/v1/account/profile`
+- `GET /api/v1/account/positions`
+- `GET /api/v1/home/overview`
+- `GET /api/v1/leaderboard/star-traders`
+- `GET /api/v1/leaderboard/top-holdings`
+- `GET /api/v1/leaderboard/top-turnover`
+- `GET /api/v1/leaderboard/rankings`
+- `GET /api/v1/trade/search`
+- `GET /api/v1/trade/quote/{stockCode}`
+- `GET /api/v1/trade/orders/active`
+- `GET /api/v1/trade/orders/history`
+- `GET /api/v1/trade/orders/{orderId}`
+- `POST /api/v1/trade/orders`
+- `POST /api/v1/trade/orders/preview`
+- `POST /api/v1/trade/orders/{orderId}/cancel`
+- `POST /api/v1/trade/orders/{orderId}/amend`
+- compatibility path: `POST /api/orders/place`
+
+## Current simplifications
+
+This repository is still a runnable prototype rather than a production trading engine.
+
+- Order persistence falls back to in-memory/local store behavior when database operations fail.
+- T+2 is still simplified and does not yet use a full Hong Kong business-day calendar.
+- Leaderboard and overview responses currently use mock/view-model-friendly data.
+- Real AOB market data ingestion and RabbitMQ-driven matching are not completed in this local prototype.

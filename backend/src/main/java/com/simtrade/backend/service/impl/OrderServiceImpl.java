@@ -3,6 +3,7 @@ package com.simtrade.backend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.simtrade.backend.dto.OrderRequest;
+import com.simtrade.backend.dto.TradeOrderAmendRequest;
 import com.simtrade.backend.dto.TradeOrderCreateRequest;
 import com.simtrade.backend.dto.TradeOrderPreviewResult;
 import com.simtrade.backend.dto.TradeOrderSubmitResult;
@@ -87,6 +88,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 context.effectivePrice,
                 context.quantity
         );
+        applyInitialExecution(order, context);
         try {
             this.save(order);
         } catch (Exception e) {
@@ -97,7 +99,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         TradeOrderSubmitResult result = new TradeOrderSubmitResult();
         result.setOrderId(order.getId());
-        result.setStatus("PENDING");
+        result.setStatus(mapStatus(order.getStatus()));
         result.setTradableNow(context.tradableNow);
         result.setValidityType(context.validityType);
         result.setValidUntil(context.validUntil);
@@ -233,6 +235,46 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Order amendOrderV1(String userId, String orderId, TradeOrderAmendRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request cannot be null.");
+        }
+
+        Order order = getOrderDetail(userId, orderId);
+        int status = safeInt(order.getStatus());
+        if (status != STATUS_PENDING && status != STATUS_PARTIAL_FILLED) {
+            throw new IllegalArgumentException("Order is not amendable");
+        }
+        if (!isLimitOrder(order)) {
+            throw new IllegalArgumentException("Only LIMIT order can be amended");
+        }
+
+        BigDecimal currentPrice = mockDataService.getCurrentPrice(order.getStockCode());
+        BigDecimal tickSize = mockDataService.getTickSize(currentPrice);
+        validateLotSize(order.getStockCode(), request.getQuantity());
+        validatePriceFloor(safeInt(order.getType()), request.getPrice());
+        validatePriceRange(
+                request.getPrice(),
+                currentPrice.subtract(tickSize.multiply(new BigDecimal("20"))),
+                currentPrice.add(tickSize.multiply(new BigDecimal("20")))
+        );
+        validateLimitQueueLimit(userId, "LIMIT", orderId);
+
+        order.setPrice(request.getPrice());
+        order.setQuantity(request.getQuantity());
+        order.setUpdateTime(LocalDateTime.now());
+        try {
+            this.updateById(order);
+        } catch (Exception e) {
+            log.warn("Amend order db update failed, fallback to in-memory only. orderId={}, reason={}",
+                    orderId, e.getMessage());
+        }
+        saveToLocalStore(order, "LIMIT");
+        return cloneOrder(order);
+    }
+
+    @Override
     public String getOrderType(String orderId) {
         return orderTypeStore.getOrDefault(orderId, "LIMIT");
     }
@@ -285,7 +327,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             validatePriceRange(effectivePrice, limitPriceMin, limitPriceMax);
         }
         validateDailyBuyLimit(userId, type);
-        validateLimitQueueLimit(userId, orderType);
+        validateLimitQueueLimit(userId, orderType, null);
 
         int lotSize = mockDataService.getLotSize(stockCode);
         int lots = Math.max(1, quantity / Math.max(1, lotSize));
@@ -338,19 +380,20 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
     }
 
-    private void validateLimitQueueLimit(String userId, String orderType) {
+    private void validateLimitQueueLimit(String userId, String orderType, String ignoredOrderId) {
         if (!"LIMIT".equals(orderType)) {
             return;
         }
-        if (countPendingLimitOrders(userId) >= MAX_PENDING_LIMIT_ORDERS) {
+        if (countPendingLimitOrders(userId, ignoredOrderId) >= MAX_PENDING_LIMIT_ORDERS) {
             throw new IllegalArgumentException("Exceeded maximum of 5 pending LIMIT orders.");
         }
     }
 
-    private long countPendingLimitOrders(String userId) {
+    private long countPendingLimitOrders(String userId, String ignoredOrderId) {
         return listOrdersByUser(userId).stream()
                 .filter(order -> isPendingStatus(order.getStatus()))
                 .filter(this::isLimitOrder)
+                .filter(order -> ignoredOrderId == null || !ignoredOrderId.equals(order.getId()))
                 .count();
     }
 
@@ -511,6 +554,53 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     private int safeInt(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    private void applyInitialExecution(Order order, ValidationContext context) {
+        if (order == null || context == null) {
+            return;
+        }
+
+        if (shouldFillImmediately(context)) {
+            order.setStatus(STATUS_FILLED);
+            order.setFilledQuantity(context.quantity);
+            order.setFilledAvgPrice(context.currentPrice);
+            return;
+        }
+
+        order.setStatus(STATUS_PENDING);
+        order.setFilledQuantity(0);
+        order.setFilledAvgPrice(BigDecimal.ZERO);
+    }
+
+    private boolean shouldFillImmediately(ValidationContext context) {
+        if ("MARKET".equals(context.orderType)) {
+            return true;
+        }
+        if (!context.tradableNow) {
+            return false;
+        }
+        if (context.type == TYPE_BUY) {
+            return context.effectivePrice.compareTo(context.currentPrice) >= 0;
+        }
+        return context.effectivePrice.compareTo(context.currentPrice) <= 0;
+    }
+
+    private String mapStatus(Integer status) {
+        int safeStatus = safeInt(status);
+        if (safeStatus == STATUS_PENDING) {
+            return "PENDING";
+        }
+        if (safeStatus == STATUS_PARTIAL_FILLED) {
+            return "PARTIAL_FILLED";
+        }
+        if (safeStatus == STATUS_FILLED) {
+            return "FILLED";
+        }
+        if (safeStatus == STATUS_CANCELED) {
+            return "CANCELED";
+        }
+        return "REJECTED";
     }
 
     private Order buildPendingOrder(String userId, String stockCode, int type, BigDecimal price, int quantity) {

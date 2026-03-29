@@ -2,6 +2,7 @@ package com.simtrade.backend.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.simtrade.backend.dto.OrderRequest;
+import com.simtrade.backend.dto.TradeOrderAmendRequest;
 import com.simtrade.backend.dto.TradeOrderCreateRequest;
 import com.simtrade.backend.dto.TradeOrderPreviewResult;
 import com.simtrade.backend.dto.TradeOrderSubmitResult;
@@ -26,6 +27,8 @@ public interface OrderService extends IService<Order> {
     Order getOrderDetail(String userId, String orderId);
 
     Order cancelOrder(String userId, String orderId);
+
+    Order amendOrderV1(String userId, String orderId, TradeOrderAmendRequest request);
 
     String getOrderType(String orderId);
 }

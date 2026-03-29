@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 
 import AppScreen from "../../../components/AppScreen";
-import FakeKeyboard from "../../../components/FakeKeyboard";
 import ScreenTopBar from "../../../components/ScreenTopBar";
 import SurfaceCard from "../../../components/SurfaceCard";
 import { TradeTrigger } from "../../../components/TradeModal";
@@ -50,14 +49,6 @@ export default function AssistantResultsPage() {
           </div>
         </div>
 
-        <div className="border-t border-[#e5e9f0] bg-[#d6dae2] px-2 pt-2">
-          <div className="mb-2 flex justify-between px-1 text-[9px] text-[#6d7480]">
-            <span>123</span>
-            <span>space</span>
-            <span>go</span>
-          </div>
-          <FakeKeyboard />
-        </div>
       </SurfaceCard>
       </div>
     </AppScreen>

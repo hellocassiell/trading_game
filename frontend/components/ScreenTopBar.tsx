@@ -63,12 +63,12 @@ export default function ScreenTopBar({
 
         <div className={`flex flex-1 flex-col items-center ${minimalHeader ? "px-0" : "px-3"}`}>
           {!hideTitle ? (
-            <span className="text-[12px] font-black leading-none text-white">{title}</span>
+            <span className="text-helper font-black leading-none text-white">{title}</span>
           ) : (
             <span className={minimalHeader ? "hidden" : "h-[11px]"} />
           )}
           {!compact && !hideTitle && !hideSubtitle ? (
-            <span className="mt-1 text-[8px] font-medium leading-none tracking-[0.12em] text-white/78">
+            <span className="text-label mt-1 font-medium leading-none tracking-[0.12em] text-white/78">
               {appMeta.brand} x {appMeta.sponsor}
             </span>
           ) : null}
@@ -95,7 +95,7 @@ export default function ScreenTopBar({
       </div>
 
       {!compact && !minimalHeader && !hideMetaRow ? (
-        <div className="mt-2 flex items-center justify-between text-[9px] text-white/78">
+        <div className="text-label mt-2 flex items-center justify-between text-white/78">
             <span>港股模拟投资比赛</span>
             <span>04 MAY 2021</span>
         </div>

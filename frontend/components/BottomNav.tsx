@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ClipboardList, House, Menu, UserRound } from "lucide-react";
 
+import { readAuthSession } from "../lib/adapters/auth";
 import { useTradeModal } from "./TradeModal";
 
 const navItems = [
@@ -15,6 +15,7 @@ const navItems = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const { openTrade } = useTradeModal();
 
   const activeHref = (() => {
@@ -30,6 +31,20 @@ export default function BottomNav() {
     return "/";
   })();
 
+  function isLoggedIn() {
+    const session = readAuthSession();
+    return Boolean(session?.userId || session?.phone);
+  }
+
+  function navigateWithAuthGuard(href: string) {
+    const requiresLogin = href === "/profile" || href === "/records" || href === "/more";
+    if (requiresLogin && !isLoggedIn()) {
+      router.push("/guest");
+      return;
+    }
+    router.push(href);
+  }
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30">
       <div className="mx-auto w-full max-w-[430px]">
@@ -39,10 +54,11 @@ export default function BottomNav() {
               const isActive = activeHref === href;
 
               return (
-                <Link
+                <button
                   key={label}
-                  href={href}
-                  className={`flex min-h-[42px] flex-col items-center justify-center gap-0.5 rounded-[12px] px-1 text-[10px] font-bold transition-all ${
+                  type="button"
+                  onClick={() => navigateWithAuthGuard(href)}
+                  className={`nav-item flex flex-col items-center justify-center gap-0.5 rounded-[12px] px-1 text-label transition-all ${
                     isActive
                       ? "bg-[linear-gradient(180deg,var(--app-orange-soft),#ffffff)] text-[var(--app-orange-dark)] shadow-[0_10px_20px_rgba(243,139,27,0.12)]"
                       : "text-[var(--app-nav-muted)]"
@@ -56,18 +72,24 @@ export default function BottomNav() {
                     }`}
                   />
                   <Icon
-                    className="h-[16px] w-[16px]"
+                    className="h-[17px] w-[17px]"
                     strokeWidth={isActive ? 2.5 : 1.8}
                   />
                   <span>{label}</span>
-                </Link>
+                </button>
               );
             })}
 
             <button
               type="button"
-              onClick={() => openTrade()}
-              className="flex min-h-[36px] items-center justify-center rounded-[12px] bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] px-1 text-[9px] font-black tracking-[0.08em] text-white shadow-[0_6px_12px_rgba(243,139,27,0.16)] transition-transform active:scale-[0.98]"
+              onClick={() => {
+                if (!isLoggedIn()) {
+                  router.push("/guest");
+                  return;
+                }
+                openTrade();
+              }}
+              className="flex h-12 mb-1 w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] px-1 text-label font-black tracking-[0.08em] text-white shadow-[0_8px_14px_rgba(243,139,27,0.24)] transition-transform active:scale-[0.98]"
             >
               <span>交易</span>
             </button>

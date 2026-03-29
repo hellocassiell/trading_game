@@ -63,12 +63,39 @@ class OrderServiceImplV1Test {
         TradeOrderSubmitResult result = orderService.placeOrderV1("u_10001", request);
 
         Assertions.assertNotNull(result.getOrderId());
-        Assertions.assertEquals("PENDING", result.getStatus());
+        Assertions.assertEquals("FILLED", result.getStatus());
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         Mockito.verify(orderService).save(orderCaptor.capture());
         Assertions.assertEquals(1, orderCaptor.getValue().getType());
-        Assertions.assertEquals(0, orderCaptor.getValue().getStatus());
+        Assertions.assertEquals(2, orderCaptor.getValue().getStatus());
+        Assertions.assertEquals(100, orderCaptor.getValue().getFilledQuantity());
+        Assertions.assertEquals(new BigDecimal("300.00"), orderCaptor.getValue().getFilledAvgPrice());
         Assertions.assertEquals("u_10001", orderCaptor.getValue().getUserId());
+    }
+
+    @Test
+    void placeOrderV1_shouldKeepPendingWhenLimitPriceNotCrossed() {
+        Mockito.when(mockDataService.getLotSize("00700")).thenReturn(100);
+        Mockito.when(mockDataService.getCurrentPrice("00700")).thenReturn(new BigDecimal("300.00"));
+        Mockito.when(mockDataService.getTickSize(new BigDecimal("300.00"))).thenReturn(new BigDecimal("0.20"));
+        Mockito.doReturn(0L).when(orderService).count(Mockito.any());
+        Mockito.doReturn(true).when(orderService).save(Mockito.any(Order.class));
+
+        TradeOrderCreateRequest request = new TradeOrderCreateRequest();
+        request.setStockCode("00700");
+        request.setDirection("BUY");
+        request.setOrderType("LIMIT");
+        request.setPrice(new BigDecimal("299.80"));
+        request.setQuantity(100);
+
+        TradeOrderSubmitResult result = orderService.placeOrderV1("u_10001", request);
+
+        Assertions.assertEquals("PENDING", result.getStatus());
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        Mockito.verify(orderService, Mockito.atLeastOnce()).save(orderCaptor.capture());
+        Order saved = orderCaptor.getValue();
+        Assertions.assertEquals(0, saved.getStatus());
+        Assertions.assertEquals(0, saved.getFilledQuantity());
     }
 
     @Test

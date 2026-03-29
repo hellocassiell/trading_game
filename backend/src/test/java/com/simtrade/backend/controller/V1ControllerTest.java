@@ -7,7 +7,9 @@ import com.simtrade.backend.dto.TradeOrderPreviewResult;
 import com.simtrade.backend.dto.TradeOrderSubmitResult;
 import com.simtrade.backend.entity.Order;
 import com.simtrade.backend.mapper.OrderMapper;
+import com.simtrade.backend.service.AuthService;
 import com.simtrade.backend.service.OrderService;
+import com.simtrade.backend.service.UserProfileService;
 import com.simtrade.backend.service.ViewQueryService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -15,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,8 +28,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({
@@ -35,7 +40,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         TradeV1Controller.class,
         LeaderboardV1Controller.class,
         TradeOrderV1Controller.class,
-        OrderController.class
+        OrderController.class,
+        AuthV1Controller.class
 })
 @Import(GlobalExceptionHandler.class)
 class V1ControllerTest {
@@ -54,6 +60,12 @@ class V1ControllerTest {
 
     @MockBean
     private OrderMapper orderMapper;
+
+    @MockBean
+    private AuthService authService;
+
+    @MockBean
+    private UserProfileService userProfileService;
 
     @Test
     void accountProfile_shouldReturnWrappedPayload() throws Exception {
@@ -140,6 +152,18 @@ class V1ControllerTest {
     }
 
     @Test
+    void corsPreflight_shouldAllowLocalFrontendOrigin() throws Exception {
+        mockMvc.perform(options("/api/v1/trade/orders")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:3000")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type,x-user-id"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:3000"))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, org.hamcrest.Matchers.containsString("POST")))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, org.hamcrest.Matchers.containsString("x-user-id")));
+    }
+
+    @Test
     void previewOrder_shouldReturnEstimatedFeeAndAmount() throws Exception {
         TradeOrderPreviewResult result = new TradeOrderPreviewResult();
         result.setStockCode("00700");
@@ -168,6 +192,38 @@ class V1ControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.stockCode").value("00700"))
                 .andExpect(jsonPath("$.data.estimatedFee").value(131.40));
+    }
+
+    @Test
+    void auth_sendAndVerifyCode_shouldReturn200() throws Exception {
+        Mockito.doNothing().when(authService).sendCode("91234567");
+        Mockito.when(authService.verifyCode("91234567", "123456"))
+                .thenReturn(new com.simtrade.backend.dto.AuthSessionResponse("u_4567", "91234567", "token"));
+
+        mockMvc.perform(post("/api/v1/auth/send-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"91234567\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        mockMvc.perform(post("/api/v1/auth/verify-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"91234567\",\"code\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userId").value("u_4567"))
+                .andExpect(jsonPath("$.data.phone").value("91234567"));
+    }
+
+    @Test
+    void auth_completeProfile_shouldReturn200() throws Exception {
+        Mockito.doNothing().when(userProfileService).upsertProfile("u_4567", "小明", "a3");
+
+        mockMvc.perform(post("/api/v1/auth/profile")
+                        .header("X-User-Id", "u_4567")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nickname\":\"小明\",\"avatarId\":\"a3\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
     }
 
     @Test

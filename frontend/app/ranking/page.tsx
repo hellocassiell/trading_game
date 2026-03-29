@@ -47,7 +47,7 @@ function TrendChart({
         })}
       </svg>
 
-      <div className="mt-1 grid grid-cols-5 text-center text-[12px] font-medium text-[#99806a]">
+      <div className="text-label mt-1 grid grid-cols-5 text-center font-medium text-[#99806a]">
         {chartLabels.map((label) => (
           <span key={label}>{label}</span>
         ))}
@@ -72,7 +72,7 @@ export default function RankingPage() {
     return (
       <AppScreen>
         <div className="app-panel rounded-[28px] px-5 py-10 text-center">
-          <p className="text-[18px] font-black text-[#2a1b12]">星级参赛者资料加载失败</p>
+          <p className="text-page font-black text-[#2a1b12]">星级参赛者资料加载失败</p>
         </div>
       </AppScreen>
     );
@@ -91,7 +91,7 @@ export default function RankingPage() {
               >
                 <ChevronLeft className="h-5 w-5" />
               </Link>
-              <h1 className="truncate text-[18px] font-black leading-none">星级参赛者</h1>
+              <h1 className="text-page truncate font-black leading-none">星级参赛者</h1>
             </div>
 
             <div className="flex shrink-0 gap-2">
@@ -99,7 +99,7 @@ export default function RankingPage() {
                 <button
                   key={tab}
                   type="button"
-                  className={`rounded-full px-3.5 py-1.5 text-[14px] font-black leading-none ${
+                  className={`rounded-full px-3.5 py-1.5 text-body font-black leading-none ${
                     index === 0
                       ? "bg-[#ffd68d] text-[#9d5b00]"
                       : "bg-[#f2a63a]/45 text-[#ffe7bf]"
@@ -121,19 +121,19 @@ export default function RankingPage() {
                 <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f0ece7] text-[#c9b9a4]">
                   <UserRound className="h-8 w-8" />
                 </div>
-                <p className="truncate text-[24px] font-black leading-none text-[#24170f]">
+                <p className="text-number truncate font-black leading-none text-[#24170f]">
                   {featured.name}
                 </p>
               </div>
 
-              <span className="shrink-0 rounded-full bg-[#fff3de] px-3 py-1.5 text-[13px] font-black text-[#85531a]">
+              <span className="text-helper shrink-0 rounded-full bg-[#fff3de] px-3 py-1.5 font-black text-[#85531a]">
                 {featured.tag}
               </span>
             </div>
 
             <div className="relative mt-4">
               <p className="text-[14px] font-bold text-[#b09a83]">今日投资建议</p>
-              <p className="mt-1 text-[16px] font-semibold leading-[1.4] text-[#4d3a29]">
+              <p className="text-body mt-1 font-semibold leading-[1.4] text-[#4d3a29]">
                 {featured.intro}
               </p>
             </div>
@@ -156,7 +156,7 @@ export default function RankingPage() {
               chartValues={featured.chartValues}
             />
 
-            <p className="relative mt-3 text-[11px] font-medium text-[#b39a80]">
+            <p className="text-helper relative mt-3 font-medium text-[#b39a80]">
               资料更新 {featured.updatedAt}
             </p>
           </div>
@@ -164,8 +164,8 @@ export default function RankingPage() {
 
         <div className="rounded-t-[28px] bg-white px-4 pb-6 pt-0">
           <div className="-mx-4 flex items-center justify-between bg-[linear-gradient(180deg,#ffaf4d_0%,#ff8916_100%)] px-4 py-3 text-white shadow-[0_8px_20px_rgba(171,86,0,0.12)]">
-            <h2 className="text-[19px] font-black leading-none">{holdingsTitle}</h2>
-            <span className="rounded-full bg-white/16 px-3 py-1 text-[12px] font-bold">
+            <h2 className="text-page font-black leading-none">{holdingsTitle}</h2>
+            <span className="text-helper rounded-full bg-white/16 px-3 py-1 font-bold">
               {currencyLabel}
             </span>
           </div>
@@ -231,8 +231,8 @@ export default function RankingPage() {
             </div>
           </div>
 
-          <p className="mt-3 text-[11px] font-medium text-[#b39a80]">更新於 {footerUpdatedAt}</p>
-          <p className="mt-2 text-[11px] leading-[1.5] text-[#9f8a74]">{disclaimer}</p>
+          <p className="text-helper mt-3 font-medium text-[#b39a80]">更新於 {footerUpdatedAt}</p>
+          <p className="text-helper mt-2 leading-[1.5] text-[#9f8a74]">{disclaimer}</p>
         </div>
       </div>
     </AppScreen>

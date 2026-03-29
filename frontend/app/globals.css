@@ -18,6 +18,19 @@
   --app-green: #26b26a;
   --app-nav-muted: #ad8b67;
   --app-gutter: clamp(10px, 3.6vw, 16px);
+  --font-12: 12px;
+  --font-13: 13px;
+  --font-15: 15px;
+  --font-17: 17px;
+  --font-18: 18px;
+  --font-20: 20px;
+  --font-24: 24px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
 }
 
 html,
@@ -31,6 +44,10 @@ body {
   overflow-x: hidden;
 }
 
+html {
+  font-size: 15px;
+}
+
 body {
   font-family:
     "SF Pro Display",
@@ -40,6 +57,8 @@ body {
     "Microsoft YaHei",
     sans-serif;
   color: var(--app-text);
+  line-height: 1.45;
+  font-weight: 500;
 }
 
 button,
@@ -79,4 +98,89 @@ a {
 
 .app-scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+.text-label {
+  font-size: var(--font-12);
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.text-helper {
+  font-size: var(--font-13);
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.text-body {
+  font-size: var(--font-15);
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.text-title {
+  font-size: var(--font-17);
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.text-page {
+  font-size: var(--font-18);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.text-number {
+  font-size: var(--font-24);
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+.btn-primary {
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: var(--app-orange);
+  color: #fff;
+  font-weight: 600;
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+.btn-secondary {
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+  background: var(--app-orange-soft);
+  color: var(--app-orange-dark);
+  font-weight: 600;
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+.input-soft {
+  border-radius: 12px;
+  border: 1px solid var(--app-border);
+  background: var(--app-orange-soft);
+  font-size: var(--font-15);
+  padding: 12px 14px;
+}
+
+.nav-item {
+  min-height: 48px;
+  padding-block: 8px;
+}
+
+.state-skeleton {
+  animation: app-pulse 1.25s ease-in-out infinite;
+  background: linear-gradient(90deg, #fff6eb 0%, #ffedd0 50%, #fff6eb 100%);
+  background-size: 200% 100%;
+  border-radius: 12px;
+}
+
+@keyframes app-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }

@@ -262,7 +262,7 @@ export function AuthPinPreview() {
 
   return (
     <AuthViewport>
-      <AuthTopBar title="手机号码注册 / 登录" closeHref="/auth/leave-confirm" />
+      <AuthTopBar title="手机号码注册 / 登录" closeHref="/auth?modal=leave" />
 
       <div className="flex flex-1 flex-col px-4 pb-[max(env(safe-area-inset-bottom),24px)] pt-3">
         <div className="rounded-[24px] bg-white/92 px-4 py-5 shadow-[0_18px_34px_rgba(171,86,0,0.08)]">

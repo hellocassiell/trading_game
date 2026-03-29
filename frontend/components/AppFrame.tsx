@@ -27,7 +27,7 @@ export default function AppFrame({ children }: AppFrameProps) {
     <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col overflow-x-hidden bg-transparent">
       <main
         className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-          hideBottomNav ? "" : "pb-[calc(env(safe-area-inset-bottom)_+_88px)]"
+          hideBottomNav ? "" : "pb-[calc(env(safe-area-inset-bottom)_+_92px)]"
         }`}
       >
         {children}

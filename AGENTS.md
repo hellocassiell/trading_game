@@ -94,6 +94,8 @@
 - 当前补充：已建立初步前端数据收口层，读取与提交逻辑优先放在 `frontend/lib/adapters/` 与 `frontend/lib/api/`，页面层不要再直接散写接口请求
 - 已有页面：登录、主页、个人、记录、更多、交易链路、排行榜、市场榜单等
 - 当前事实：暂无前端自动化测试文件；交易提交已可通过前端 adapter 对接现有后端下单接口，其余展示页仍以 adapter 映射 mock 数据为主
+- 当前登录前实现约束：`/auth/invite` 是注册选择头像与昵称页，不是邀请好友页；`注册中途离开确认` 与 `账户被封锁` 按设计稿必须做成当前页弹窗，不再落独立路由页；输入场景统一使用设备原生键盘
+- 当前登录页补充：`/auth` 需包含手机号输入、验证码输入、右侧获取验证码按钮、60 秒倒计时与重新获取逻辑，再进入选择头像页
 
 ### 后端
 
@@ -101,10 +103,12 @@
 - 技术栈：Spring Boot 2.7、Java 17、MyBatis-Plus、MySQL、Redis、RabbitMQ
 - 当前状态：已有订单提交、撮合、手续费计算、统一返回结构、全局异常处理、手续费单元测试
 - 当前事实：实现是可运行雏形，不是完整生产版
+- 当前补充：账户持仓接口已改为按 `X-User-Id` 对应用户的已成交订单聚合返回；注册流程支持提交昵称与头像到后端用户资料存储
 - 当前差异：
   - PRD 内部 API 倾向 `/api/v1/...`
   - 当前代码已同时存在旧接口 `/api/orders/place` 与第一批 `/api/v1/...` 只读/交易接口
   - 当前后端有部分 mock / 简化逻辑，例如撮合后 T+2 直接 `plusDays(2)`，并非完整营业日日历
+  - 当前后端已补本地联调用全局 CORS 配置，默认放行 `http://localhost:*` 与 `http://127.0.0.1:*` 访问 `/api/**`
 - 当前本地环境事实（2026-03-28）：
   - 已通过 Homebrew 安装 `openjdk@17`、`maven`、`mysql`、`redis`、`rabbitmq`
   - 当前 shell 默认 `java -version` 仍可能落在 JDK 24；后端执行前必须显式切到 Homebrew 的 JDK 17，例如：
@@ -118,6 +122,7 @@
 - 保持移动端 H5 体验优先，不要改成后台管理系统风格。
 - `UI设计稿/` 是前端高保真还原的第一参考源。两张流程总图、登录流程图、交易链路图以及所有单页截图都必须共同参考。
 - 页面元素、模块顺序、卡片层级、弹窗样式、按钮位置、底部导航结构、页面跳转关系要尽量按设计稿 1:1 还原；不要自行发挥成另一套产品结构。
+- 登录前链路中的 `注册中途离开确认`、`账户被封锁` 等强提示场景优先实现为当前页叠加弹窗；除非设计稿明确是独立页面，否则不要额外拆新路由。
 - 视觉主题必须统一为橙色及橙色衍生色。即使设计稿的旧版画面存在蓝色主色，也只可复用其结构与布局，不可直接照搬蓝色作为最终主主题。
 - 主色替换范围包括但不限于：主按钮、激活态 Tab、重点数值、图表高亮、角标、图标强调、分段控件、浮动交易按钮、榜单强调元素。
 - 所有美股逻辑必须改成港股逻辑，包括但不限于：股票示例、列表标题、币种、报价单位、行情说明、持仓标题、榜单名称、搜索提示、交易说明、跳转文案。
@@ -128,6 +133,7 @@
 - 页面读取数据时优先经由 `frontend/lib/adapters/` 返回页面所需 view model；对接真实接口时优先经由 `frontend/lib/api/` 发起请求，不要在页面或纯展示组件里直接写 fetch。
 - 新增交互时必须补齐 4 种状态：loading、empty、error、success。
 - 表单和交易输入要做显式校验，错误提示文案要可读，不要只靠浏览器原生报错。
+- 手机号输入、搜索输入、交易价格/数量输入等统一使用系统原生键盘能力，不要额外绘制假的系统键盘组件。
 - 对接后端前，组件层不要直接写死接口细节，优先预留清晰的请求/响应映射层。
 - 不要编辑生成目录：`frontend/.next/`、`frontend/node_modules/`。
 - 如果设计稿里的结构与港股业务规则冲突，处理原则是：保留设计结构与交互形式，重写文案、字段与业务口径，使之符合港股比赛规则。
@@ -147,15 +153,23 @@
   - `GET /api/v1/account/profile`
   - `GET /api/v1/account/positions`
   - `GET /api/v1/home/overview`
+  - `GET /api/v1/leaderboard/star-traders`
+  - `GET /api/v1/leaderboard/top-holdings`
+  - `GET /api/v1/leaderboard/top-turnover`
+  - `GET /api/v1/leaderboard/rankings`
   - `GET /api/v1/trade/orders/active`
   - `GET /api/v1/trade/orders/history`
   - `GET /api/v1/trade/orders/{orderId}`
   - `POST /api/v1/trade/orders`
   - `POST /api/v1/trade/orders/{orderId}/cancel`
+  - `POST /api/v1/trade/orders/{orderId}/amend`
   - `GET /api/v1/trade/search`
   - `GET /api/v1/trade/quote/{stockCode}`
   - `POST /api/v1/trade/orders/preview`
   - 同时保留兼容路径 `POST /api/orders/place`
+  - 登录联调新增：`POST /api/v1/auth/send-code`（60s 重发间隔，5 分钟有效期）、`POST /api/v1/auth/verify-code`（校验 6 位验证码，返回 userId/token）
+  - 登录联调新增：`POST /api/v1/auth/profile`（需 `X-User-Id`，提交昵称与头像）
+  - 登录联调新增：`POST /api/v1/auth/send-code`、`POST /api/v1/auth/verify-code`
 
 ## 8. 报错与稳定性要求
 
@@ -209,6 +223,7 @@
 - 推荐命令：`cd backend && ./run-local.sh`
 - 数据库初始化：`cd backend && ./init-local-db.sh`
 - 说明文档：`backend/README.md`
+- 当前本地跨域：后端已对 `/api/**` 开启 localhost/127.0.0.1 的开发态 CORS 放行，前端默认 `http://localhost:3000` 可直接联调 `http://localhost:8080`
 - 注意：当前 shell 如设置了 `http_proxy` / `https_proxy`，本地调接口时请使用 `curl --noproxy '*' ...`，避免本地回环请求被代理拦截成 502
 
 ### 改动后的执行原则

@@ -8,7 +8,7 @@ export const appMeta = {
 export const homeStats = [
   { label: "总参赛人数", value: "223,563", note: "只计算有交易纪录之参赛者" },
   { label: "累计总交易宗数", value: "89,562宗", note: "截至今日 16:00" },
-  { label: "累计总盈利(港元)", value: "+$151,566", note: "较昨日上升 2.9%", positive: true },
+  { label: "累计总盈利(港元)", value: "+HK$151,566", note: "较昨日上升 2.9%", positive: true },
 ] as const;
 
 export const summaryStats = [
@@ -291,28 +291,24 @@ export const rankingList = [
 export const assistantResults = [
   { symbol: "腾讯控股", code: "0700", logo: "腾" },
   { symbol: "阿里巴巴-SW", code: "9988", logo: "阿" },
-  { symbol: "美团-W", code: "3690", logo: "团" },
-  { symbol: "小米集团-W", code: "1810", logo: "米" },
-  { symbol: "比亚迪股份", code: "1211", logo: "迪" },
   { symbol: "香港交易所", code: "0388", logo: "港" },
-  { symbol: "友邦保险", code: "1299", logo: "友" },
+  { symbol: "盈富基金", code: "2800", logo: "盈" },
 ] as const;
 
 export const recentSearches = [
   { symbol: "0700", name: "腾讯控股" },
   { symbol: "9988", name: "阿里巴巴-SW" },
-  { symbol: "3690", name: "美团-W" },
-  { symbol: "1810", name: "小米集团-W" },
-  { symbol: "1211", name: "比亚迪股份" },
+  { symbol: "0388", name: "香港交易所" },
+  { symbol: "2800", name: "盈富基金" },
 ] as const;
 
 export const homeEventStats = [
   { label: "累计参加人数", primary: "223,563", secondary: "", icon: "users" },
-  { label: "共持有资产总值", primary: "$9,562亿", secondary: "", icon: "value" },
+  { label: "共持有资产总值", primary: "HK$9,562亿", secondary: "", icon: "value" },
   {
     label: "赛事交易金额",
-    primary: "今日 $1,105,153",
-    secondary: "累计 $5,398亿",
+    primary: "今日 HK$1,105,153",
+    secondary: "累计 HK$5,398亿",
     icon: "coin",
   },
   {
@@ -324,7 +320,7 @@ export const homeEventStats = [
 ] as const;
 
 export const homeSummaryCard = {
-  name: "Josey Cheung",
+  name: "Joey Cheung",
   rank: "91",
   rankRise: "12",
   dailyTrades: "每天可供交易次数",
@@ -391,7 +387,7 @@ export const homeRankingRows = [
   { rank: "3", movement: "up", name: "Jess Ngai", amount: "HK$3,112,889", gain: "+93%" },
   { rank: "4", movement: "down", name: "Ronald Tong", amount: "HK$3,112,001", gain: "+93%" },
   { rank: "5", movement: "down", name: "Raymond", amount: "HK$3,005,886", gain: "+93%" },
-  { rank: "91", movement: "up", name: "Josey Cheung", amount: "HK$947,321", gain: "+12%" },
+  { rank: "91", movement: "up", name: "Joey Cheung", amount: "HK$947,321", gain: "+12%" },
 ] as const;
 
 export const tradeProducts = {
@@ -399,28 +395,28 @@ export const tradeProducts = {
     symbol: "0700",
     company: "腾讯控股",
     sub: "HKEX",
-    price: "323.400",
-    change: "+5.200 (1.63%)",
+    price: "300.000",
+    change: "+2.800 (0.94%)",
     remainingTrades: "19",
     cashBalance: "HK$ 1,000,000.000",
     lotSize: "100",
-    defaultPrice: "323.400",
+    defaultPrice: "300.000",
     defaultQuantity: "100",
-    settlementTotal: "HK$ 32,340.00",
+    settlementTotal: "HK$ 30,000.00",
     platformLink: "到AASTOCKS查看详尽报价 >",
   },
   "9988": {
     symbol: "9988",
     company: "阿里巴巴-SW",
     sub: "HKEX",
-    price: "80.550",
-    change: "-1.750 (2.13%)",
+    price: "70.000",
+    change: "-1.250 (1.75%)",
     remainingTrades: "19",
     cashBalance: "HK$ 947,321.400",
     lotSize: "100",
-    defaultPrice: "80.550",
+    defaultPrice: "70.000",
     defaultQuantity: "100",
-    settlementTotal: "HK$ 8,055.00",
+    settlementTotal: "HK$ 7,000.00",
     platformLink: "到AASTOCKS查看详尽报价 >",
   },
   "3690": {
@@ -469,14 +465,28 @@ export const tradeProducts = {
     symbol: "0388",
     company: "香港交易所",
     sub: "HKEX",
-    price: "245.600",
-    change: "+1.800 (0.74%)",
+    price: "290.000",
+    change: "+2.000 (0.69%)",
     remainingTrades: "18",
     cashBalance: "HK$ 947,321.400",
     lotSize: "100",
-    defaultPrice: "245.600",
+    defaultPrice: "290.000",
     defaultQuantity: "100",
-    settlementTotal: "HK$ 24,560.00",
+    settlementTotal: "HK$ 29,000.00",
+    platformLink: "到AASTOCKS查看详尽报价 >",
+  },
+  "2800": {
+    symbol: "2800",
+    company: "盈富基金",
+    sub: "HKEX",
+    price: "19.800",
+    change: "+0.150 (0.76%)",
+    remainingTrades: "19",
+    cashBalance: "HK$ 1,000,000.000",
+    lotSize: "500",
+    defaultPrice: "19.800",
+    defaultQuantity: "500",
+    settlementTotal: "HK$ 9,900.00",
     platformLink: "到AASTOCKS查看详尽报价 >",
   },
   "0005": {
@@ -526,7 +536,10 @@ export const tradeProducts = {
 export type TradeSymbol = keyof typeof tradeProducts;
 
 export function getTradeProduct(symbol: string) {
-  const upperSymbol = symbol.toUpperCase() as TradeSymbol;
+  const raw = symbol.toUpperCase().replace(/\.HK$/, "");
+  const normalized =
+    raw.length === 5 && raw.startsWith("0") ? raw.slice(1) : raw;
+  const upperSymbol = normalized as TradeSymbol;
 
   return (
     tradeProducts[upperSymbol] ?? {

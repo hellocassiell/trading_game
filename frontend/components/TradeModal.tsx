@@ -16,10 +16,17 @@ type TradeModalVariant = "trade" | "order";
 type TradeModalState = {
   symbol?: string | null;
   variant: TradeModalVariant;
+  orderId?: string;
+  orderStatus?: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED";
 } | null;
 
 type TradeModalContextValue = {
-  openTrade: (symbol?: string | null, variant?: TradeModalVariant) => void;
+  openTrade: (
+    symbol?: string | null,
+    variant?: TradeModalVariant,
+    orderId?: string,
+    orderStatus?: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED"
+  ) => void;
   closeTrade: () => void;
 };
 
@@ -30,7 +37,8 @@ export function TradeModalProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<TradeModalContextValue>(
     () => ({
-      openTrade: (symbol, variant = "trade") => setState({ symbol, variant }),
+      openTrade: (symbol, variant = "trade", orderId, orderStatus) =>
+        setState({ symbol, variant, orderId, orderStatus }),
       closeTrade: () => setState(null),
     }),
     []
@@ -52,6 +60,8 @@ export function TradeModalProvider({ children }: { children: ReactNode }) {
             <TradeTicketCard
               product={state.symbol ? getTradeProductViewModel(state.symbol) : undefined}
               variant={state.variant}
+              orderId={state.orderId}
+              orderStatus={state.orderStatus}
               startWithSearch={!state.symbol}
               onClose={() => setState(null)}
             />
@@ -75,6 +85,8 @@ export function useTradeModal() {
 type TradeTriggerProps = {
   symbol?: string;
   variant?: TradeModalVariant;
+  orderId?: string;
+  orderStatus?: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED";
   className?: string;
   children: ReactNode;
 };
@@ -82,6 +94,8 @@ type TradeTriggerProps = {
 export function TradeTrigger({
   symbol,
   variant = "trade",
+  orderId,
+  orderStatus,
   className = "",
   children,
 }: TradeTriggerProps) {
@@ -90,7 +104,7 @@ export function TradeTrigger({
   return (
     <button
       type="button"
-      onClick={() => openTrade(symbol, variant)}
+      onClick={() => openTrade(symbol, variant, orderId, orderStatus)}
       className={className}
     >
       {children}

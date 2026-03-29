@@ -22,7 +22,7 @@ export default function TopVolumePage() {
     return (
       <AppScreen>
         <div className="app-panel rounded-[28px] px-5 py-10 text-center">
-          <p className="text-[18px] font-black text-[#2a1b12]">成交榜单加载失败</p>
+          <p className="text-page font-black text-[#2a1b12]">成交榜单加载失败</p>
         </div>
       </AppScreen>
     );
@@ -40,7 +40,7 @@ export default function TopVolumePage() {
             >
               <ChevronLeft className="h-5 w-5" />
             </Link>
-            <h1 className="text-[18px] font-black">今日10大成交港股</h1>
+            <h1 className="text-page font-black">今日10大成交港股</h1>
           </div>
 
           <div className="grid grid-cols-2">
@@ -52,7 +52,7 @@ export default function TopVolumePage() {
                   key={tab.key}
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
-                  className={`relative flex h-12 items-center justify-center text-[17px] font-black transition-colors ${
+                  className={`text-title relative flex h-12 items-center justify-center font-black transition-colors ${
                     isActive ? "text-[#ffe26e]" : "text-[#ffd59a]"
                   }`}
                 >
@@ -66,7 +66,7 @@ export default function TopVolumePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_auto] items-center border-b border-[#efe4d7] px-4 py-2.5 text-[12px] font-semibold text-[#b5a190]">
+        <div className="text-helper grid grid-cols-[1fr_auto] items-center border-b border-[#efe4d7] px-4 py-2.5 font-semibold text-[#b5a190]">
           <span>代號及名稱</span>
           <span>{activeTab === "buy" ? "總買入金額" : "總賣出金額"}</span>
         </div>
@@ -84,20 +84,20 @@ export default function TopVolumePage() {
                 className="grid min-h-[56px] w-full grid-cols-[1fr_auto] items-center border-b border-[#f0e8dd] px-4 py-3 text-left active:bg-[#fffaf4]"
               >
                 <div className="min-w-0">
-                  <p className="flex items-baseline gap-2 truncate text-[18px] font-black leading-none text-[#2b2f35]">
+                  <p className="flex items-baseline gap-2 truncate text-title font-black leading-none text-[#2b2f35]">
                     <span>{item.symbol}</span>
-                    <span className="truncate text-[17px] font-bold text-[#3a3d43]">
+                    <span className="text-body truncate font-bold text-[#3a3d43]">
                       {item.name}
                     </span>
                   </p>
                 </div>
-                <p className="text-[17px] font-black text-[#2b2f35]">{item.price}</p>
+                <p className="text-title font-black text-[#2b2f35]">{item.price}</p>
               </TradeTrigger>
             ))}
           </div>
         </div>
 
-        <div className="px-4 py-3 text-[11px] text-[#b3a698]">
+        <div className="text-helper px-4 py-3 text-[#b3a698]">
           最後更新 {updatedAt}
         </div>
       </div>
