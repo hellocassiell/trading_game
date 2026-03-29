@@ -93,7 +93,7 @@ export function getGuestLandingViewModel(): GuestLandingViewModel {
   return {
     primaryBrand: "CITI",
     partnerBrand: appMeta.brand,
-    competition: "智财投资大赛\n2020",
+    competition: "智财投资大赛\n2026",
     prizeLabel: "冠军可获得现金奖",
     prizeAmount: "HK$50,000",
     prizeSponsor: "由 Citi 赞助",

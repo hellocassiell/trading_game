@@ -34,7 +34,7 @@ export default function GuestPage() {
 
   return (
     <AppScreen className="!px-0 !pb-0">
-      <div className="relative min-h-[100dvh] overflow-hidden bg-[#f3f3f3] text-[#202020]">
+      <div className="relative min-h-[100dvh] overflow-hidden bg-[#f3f3f3]">
         <div className="absolute inset-x-0 top-0 h-[270px] bg-[linear-gradient(180deg,#f7fbff_0%,#dff2ff_55%,#f3f3f3_100%)]" />
         <div className="absolute left-[-18px] top-[116px] h-[168px] w-[460px] rotate-[10deg] rounded-[48%] bg-[linear-gradient(90deg,rgba(255,156,47,0.26),rgba(255,196,132,0.08))]" />
         <div className="absolute left-4 top-[88px] h-5 w-5 rounded-full bg-[#ff9d3f]" />

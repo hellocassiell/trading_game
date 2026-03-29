@@ -1,7 +1,7 @@
 export const appMeta = {
   brand: "AASTOCKS",
   sponsor: "Citi",
-  competition: "智财投资大赛2020",
+  competition: "智财投资大赛2026",
   subtitle: "港股模拟投资大赛",
 };
 
@@ -373,7 +373,7 @@ export const homeWeeklyFlyers = {
   featured: {
     name: "Kit Chu",
     tag: "第一名得奖者",
-    period: "2020/04/25 至2020/04/29",
+    period: "2026/04/25 至2026/04/29",
     gainLabel: "得奖纪录",
     gain: "+93%",
     riseLabel: "排名上升",

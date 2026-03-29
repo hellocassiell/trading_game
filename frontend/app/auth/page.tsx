@@ -174,16 +174,16 @@ export default function AuthPage() {
 
           <div className="mt-10 border-b border-[#7db2fb] pb-3">
             <div className="flex items-center gap-3 text-[#212121]">
-              <span className="text-[16px]">📱</span>
-              <span className="text-[28px]">{viewModel.countryCode}</span>
-              <span className="text-[16px] text-[#989898]">⌄</span>
+              <span className="text-[18px]">📱</span>
+              <span className="text-[18px]">{viewModel.countryCode}</span>
+              <span className="text-[18px] text-[#989898]">⌄</span>
               <input
                 type="tel"
                 inputMode="numeric"
                 value={formattedPhone}
                 onChange={(event) => updatePhone(event.target.value)}
                 placeholder={viewModel.phonePlaceholder}
-                className="min-w-0 flex-1 bg-transparent text-[28px] tracking-[0.02em] text-[#1e1e1e] outline-none placeholder:text-[#8b8b8b]"
+                className="min-w-0 flex-1 bg-transparent text-[18px] tracking-[0.02em] text-[#1e1e1e] outline-none placeholder:text-[#8b8b8b]"
               />
             </div>
           </div>

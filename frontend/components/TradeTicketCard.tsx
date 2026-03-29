@@ -509,7 +509,7 @@ export default function TradeTicketCard({
                 <span className="flex h-5 w-5 items-center justify-center rounded-[6px] bg-[#fff1de] text-[var(--app-orange-dark)]">
                   <Trophy className="h-3.5 w-3.5" />
                 </span>
-                <span>智财港股投资大赛2020</span>
+                <span>智财港股投资大赛2026</span>
               </div>
               <span className="font-semibold text-[#7b6450]">由 Citi 赞助</span>
             </div>

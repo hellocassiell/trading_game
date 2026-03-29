@@ -134,7 +134,7 @@ export function GuestLandingPreview() {
           CITI x AASTOCKS
         </p>
         <h2 className="mt-2 text-[25px] font-extrabold leading-tight text-[#4a5568]">
-          智财投资大赛 2020
+          智财投资大赛 2026
         </h2>
         <p className="mt-3 text-[11px] leading-relaxed text-[#8e7a63]">
           初始模拟资金 1,000,000 港元，参与港股模拟投资比赛
@@ -173,7 +173,7 @@ export function GuestLandingPreview() {
 
         <div className="mt-auto pt-10">
           <p className="text-[9px] font-medium uppercase tracking-widest text-[#cbd5e1]">
-            © 2020 AASTOCKS.com LIMITED. ALL RIGHTS RESERVED.
+            © 2026 AASTOCKS.com LIMITED. ALL RIGHTS RESERVED.
           </p>
         </div>
       </div>

@@ -6,7 +6,7 @@ import { TradeModalProvider } from "../components/TradeModal";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "智财投资大赛2020",
+  title: "智财投资大赛2026",
   description: "港股模拟交易移动端高保真原型",
 };
 

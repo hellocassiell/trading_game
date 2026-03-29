@@ -225,7 +225,7 @@ export default function HomePage() {
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#fff0d8] text-[var(--app-orange-dark)]">
               <Trophy className="h-4 w-4" />
             </div>
-            <span className="text-[13px] font-black">智财港股投资大赛2020</span>
+            <span className="text-[13px] font-black">智财港股投资大赛2026</span>
           </div>
           <span className="text-[13px] font-bold text-[#7b5c38]">由 Citi 赞助</span>
         </div>
