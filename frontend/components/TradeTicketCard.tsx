@@ -389,6 +389,38 @@ export default function TradeTicketCard({
     setSubmitPending(true);
     setSubmitError(null);
 
+    if (variant === "order") {
+      if (!orderId) {
+        setSubmitPending(false);
+        setShowConfirm(false);
+        setSubmitError("订单编号缺失，暂无法改单");
+        return;
+      }
+      const amendResult = await tradingApiClient.amendOrder(orderId, displayPrice, displayQuantity);
+      setSubmitPending(false);
+      if (!amendResult.ok) {
+        setShowConfirm(false);
+        setSubmitError(amendResult.message);
+        return;
+      }
+      setCurrentOrderStatus("CANCELED");
+      setLastOrderId(amendResult.orderId);
+      setShowConfirm(false);
+      setShowSuccess(true);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("trade-order-updated", {
+            detail: {
+              type: "amend_success",
+              orderId: amendResult.orderId,
+              message: "改单成功，原订单已撤单",
+            },
+          })
+        );
+      }
+      return;
+    }
+
     const result = await submitTradeOrder({
       stockCode: currentProduct.symbol,
       side: orderSide,
@@ -408,13 +440,13 @@ export default function TradeTicketCard({
     setLastOrderId(result.orderId);
     setShowConfirm(false);
     setShowSuccess(true);
-    if (variant === "order" && typeof window !== "undefined") {
+    if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("trade-order-updated", {
           detail: {
-            type: "amend_success",
+            type: "submit_success",
             orderId: result.orderId,
-            message: "改单成功",
+            message: "下单成功",
           },
         })
       );
@@ -515,14 +547,14 @@ export default function TradeTicketCard({
             </div>
 
             <div className="text-helper bg-[#5e6670] px-3.5 py-2 leading-relaxed text-white">
-              要维持有效的参赛资格，请记得每週最少成功交易4次，加油!
+              要维持有效的参赛资格，请记得每周最少成功交易4次，加油!
             </div>
           </header>
 
           <main className="bg-white">
             <section className="text-helper grid grid-cols-2 border-b border-[#efe5d8] px-3.5 py-2.5">
               <div>
-                <p className="text-[#907a63]">今日尚馀交易次数</p>
+                <p className="text-[#907a63]">今日尚余交易次数</p>
                 <p className="text-title mt-1 font-bold text-[#25282d]">{tradesLeft}</p>
               </div>
               <div className="text-right">
@@ -806,7 +838,7 @@ export default function TradeTicketCard({
               onClick={() => setShowConfirm(false)}
               className="text-body flex h-11 items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
             >
-              更改
+              取消
             </button>
             <button
               type="button"

@@ -24,6 +24,7 @@ export interface VerifyAuthCodeResponse {
   userId: string;
   phone: string;
   token: string;
+  profileCompleted: boolean;
 }
 
 export interface CompleteAuthProfileRequest {

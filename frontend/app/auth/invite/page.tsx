@@ -26,11 +26,12 @@ export default function AuthInvitePage() {
   const canConfirm = Boolean(selectedAvatarId && trimmedNickname);
 
   useEffect(() => {
-    const draft = readAuthDraft();
-    if (!draft.phone) {
+    const session = readAuthSession();
+    if (!session?.userId) {
       router.replace("/auth");
       return;
     }
+    const draft = readAuthDraft();
     if (draft.avatarId) {
       setSelectedAvatarId(draft.avatarId);
     }
@@ -57,7 +58,6 @@ export default function AuthInvitePage() {
       setErrorMessage(viewModel.emptyNicknameMessage);
       return;
     }
-    const draft = readAuthDraft();
     const prevSession = readAuthSession();
     const userId = prevSession?.userId;
     if (!userId) {
@@ -77,7 +77,7 @@ export default function AuthInvitePage() {
       return;
     }
     createAuthSession({
-      phone: draft.phone ?? "",
+      phone: prevSession?.phone ?? "",
       nickname: trimmedNickname,
       avatarId: selectedAvatarId,
       loggedInAt: new Date().toISOString(),

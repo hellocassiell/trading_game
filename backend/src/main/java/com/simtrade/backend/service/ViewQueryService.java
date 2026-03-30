@@ -49,8 +49,8 @@ public class ViewQueryService {
             }
         }
         securitiesMarketValue = securitiesMarketValue.setScale(2, RoundingMode.HALF_UP);
-        BigDecimal bonusAmount = new BigDecimal("50000.00");
-        BigDecimal cashAvailable = INITIAL_CAPITAL.add(bonusAmount)
+        BigDecimal bonusAmount = BigDecimal.ZERO;
+        BigDecimal cashAvailable = INITIAL_CAPITAL
                 .subtract(securitiesMarketValue)
                 .setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalAssets = securitiesMarketValue.add(cashAvailable).setScale(2, RoundingMode.HALF_UP);

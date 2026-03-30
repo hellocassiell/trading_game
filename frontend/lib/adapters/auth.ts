@@ -95,7 +95,7 @@ export function getGuestLandingViewModel(): GuestLandingViewModel {
     partnerBrand: appMeta.brand,
     competition: "智财投资大赛\n2026",
     prizeLabel: "冠军可获得现金奖",
-    prizeAmount: "HK$50,000",
+    prizeAmount: "HK$1,000,000",
     prizeSponsor: "由 Citi 赞助",
     quickActions: [
       { label: "本季奖品", href: "/more" },

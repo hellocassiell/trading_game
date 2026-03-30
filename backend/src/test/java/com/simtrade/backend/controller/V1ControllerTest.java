@@ -198,7 +198,7 @@ class V1ControllerTest {
     void auth_sendAndVerifyCode_shouldReturn200() throws Exception {
         Mockito.doNothing().when(authService).sendCode("91234567");
         Mockito.when(authService.verifyCode("91234567", "123456"))
-                .thenReturn(new com.simtrade.backend.dto.AuthSessionResponse("u_4567", "91234567", "token"));
+                .thenReturn(new com.simtrade.backend.dto.AuthSessionResponse("u_4567", "91234567", "token", false));
 
         mockMvc.perform(post("/api/v1/auth/send-code")
                         .contentType(MediaType.APPLICATION_JSON)

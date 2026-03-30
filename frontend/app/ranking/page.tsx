@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { ChevronLeft, UserRound } from "lucide-react";
 
 import AppScreen from "../../components/AppScreen";
@@ -58,15 +61,10 @@ function TrendChart({
 
 export default function RankingPage() {
   const { status, starParticipants } = getRankingPageData();
-  const {
-    featured,
-    tabs,
-    holdings,
-    holdingsTitle,
-    currencyLabel,
-    disclaimer,
-    footerUpdatedAt,
-  } = starParticipants;
+  const { tabs, items, currencyLabel, disclaimer, footerUpdatedAt } = starParticipants;
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>(tabs[0]);
+  const activeItem = useMemo(() => items[activeTab], [activeTab, items]);
+  const { featured, holdings, holdingsTitle } = activeItem;
 
   if (status === "error") {
     return (
@@ -95,14 +93,13 @@ export default function RankingPage() {
             </div>
 
             <div className="flex shrink-0 gap-2">
-              {tabs.map((tab, index) => (
+              {tabs.map((tab) => (
                 <button
                   key={tab}
                   type="button"
+                  onClick={() => setActiveTab(tab)}
                   className={`rounded-full px-3.5 py-1.5 text-body font-black leading-none ${
-                    index === 0
-                      ? "bg-[#ffd68d] text-[#9d5b00]"
-                      : "bg-[#f2a63a]/45 text-[#ffe7bf]"
+                    tab === activeTab ? "bg-[#ffd68d] text-[#9d5b00]" : "bg-[#f2a63a]/45 text-[#ffe7bf]"
                   }`}
                 >
                   {tab}
@@ -143,7 +140,7 @@ export default function RankingPage() {
               <span className="text-[16px] font-black text-[#22160d]">
                 {featured.marketValue} 港币
               </span>
-              <span className="text-[15px] font-bold text-[#8d7964]">可投资馀额</span>
+              <span className="text-[15px] font-bold text-[#8d7964]">可投资余额</span>
               <span className="text-[16px] font-black text-[#22160d]">{featured.cash} 港币</span>
               <span className="text-[15px] font-black text-[var(--app-orange-dark)]">资产总值</span>
               <span className="text-[16px] font-black text-[var(--app-orange-dark)]">
@@ -231,7 +228,7 @@ export default function RankingPage() {
             </div>
           </div>
 
-          <p className="text-helper mt-3 font-medium text-[#b39a80]">更新於 {footerUpdatedAt}</p>
+          <p className="text-helper mt-3 font-medium text-[#b39a80]">更新于 {footerUpdatedAt}</p>
           <p className="text-helper mt-2 leading-[1.5] text-[#9f8a74]">{disclaimer}</p>
         </div>
       </div>

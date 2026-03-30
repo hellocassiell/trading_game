@@ -140,6 +140,27 @@ class OrderServiceImplV1Test {
     }
 
     @Test
+    void placeOrderV1_shouldRejectSellWhenNoHoldings() {
+        Mockito.when(mockDataService.getLotSize("00700")).thenReturn(100);
+        Mockito.when(mockDataService.getCurrentPrice("00700")).thenReturn(new BigDecimal("300.00"));
+        Mockito.when(mockDataService.getTickSize(new BigDecimal("300.00"))).thenReturn(new BigDecimal("0.20"));
+        Mockito.doReturn(new ArrayList<Order>()).when(orderService).list(Mockito.any());
+
+        TradeOrderCreateRequest request = new TradeOrderCreateRequest();
+        request.setStockCode("00700");
+        request.setDirection("SELL");
+        request.setOrderType("LIMIT");
+        request.setPrice(new BigDecimal("300.00"));
+        request.setQuantity(100);
+
+        IllegalArgumentException exception = Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> orderService.placeOrderV1("u_10001", request)
+        );
+        Assertions.assertTrue(exception.getMessage().contains("Insufficient holdings"));
+    }
+
+    @Test
     void cancelOrder_shouldUpdatePendingOrderToCanceled() {
         Order pending = new Order();
         pending.setId("ord_1");
@@ -172,7 +193,7 @@ class OrderServiceImplV1Test {
     }
 
     @Test
-    void amendOrderV1_shouldUpdateQueuedLimitOrder() {
+    void amendOrderV1_shouldCancelOriginalAndCreateNewOrder() {
         Mockito.when(mockDataService.getLotSize("00700")).thenReturn(100);
         Mockito.when(mockDataService.getCurrentPrice("00700")).thenReturn(new BigDecimal("300.00"));
         Mockito.when(mockDataService.getTickSize(new BigDecimal("300.00"))).thenReturn(new BigDecimal("0.20"));
@@ -192,6 +213,7 @@ class OrderServiceImplV1Test {
 
         Mockito.doReturn(pendingLimit).when(orderService).getById("ord_amend_1");
         Mockito.doReturn(true).when(orderService).updateById(Mockito.any(Order.class));
+        Mockito.doReturn(true).when(orderService).save(Mockito.any(Order.class));
 
         TradeOrderAmendRequest request = new TradeOrderAmendRequest();
         request.setPrice(new BigDecimal("301.20"));
@@ -199,9 +221,13 @@ class OrderServiceImplV1Test {
 
         Order amended = orderService.amendOrderV1("u_10001", "ord_amend_1", request);
 
+        Assertions.assertNotEquals("ord_amend_1", amended.getId());
         Assertions.assertEquals(new BigDecimal("301.20"), amended.getPrice());
         Assertions.assertEquals(200, amended.getQuantity());
         Assertions.assertEquals(0, amended.getStatus());
+        ArgumentCaptor<Order> updateCaptor = ArgumentCaptor.forClass(Order.class);
+        Mockito.verify(orderService).updateById(updateCaptor.capture());
+        Assertions.assertEquals(3, updateCaptor.getValue().getStatus());
     }
 
     @Test
@@ -217,12 +243,14 @@ class OrderServiceImplV1Test {
         Mockito.doReturn(currentOrder).when(orderService).getById("ord_amend_2");
         Mockito.doReturn(pendingOrders).when(orderService).list(Mockito.any());
         Mockito.doReturn(true).when(orderService).updateById(Mockito.any(Order.class));
+        Mockito.doReturn(true).when(orderService).save(Mockito.any(Order.class));
 
         TradeOrderAmendRequest request = new TradeOrderAmendRequest();
         request.setPrice(new BigDecimal("300.20"));
         request.setQuantity(100);
 
         Order amended = orderService.amendOrderV1("u_10001", "ord_amend_2", request);
+        Assertions.assertNotEquals("ord_amend_2", amended.getId());
         Assertions.assertEquals(new BigDecimal("300.20"), amended.getPrice());
     }
 

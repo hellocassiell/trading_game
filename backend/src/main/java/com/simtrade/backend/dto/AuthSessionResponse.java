@@ -4,13 +4,15 @@ public class AuthSessionResponse {
     private String userId;
     private String phone;
     private String token;
+    private boolean profileCompleted;
 
     public AuthSessionResponse() {}
 
-    public AuthSessionResponse(String userId, String phone, String token) {
+    public AuthSessionResponse(String userId, String phone, String token, boolean profileCompleted) {
         this.userId = userId;
         this.phone = phone;
         this.token = token;
+        this.profileCompleted = profileCompleted;
     }
 
     public String getUserId() {
@@ -35,5 +37,13 @@ public class AuthSessionResponse {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public boolean isProfileCompleted() {
+        return profileCompleted;
+    }
+
+    public void setProfileCompleted(boolean profileCompleted) {
+        this.profileCompleted = profileCompleted;
     }
 }

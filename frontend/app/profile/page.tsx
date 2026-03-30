@@ -148,7 +148,9 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <p className="text-helper mt-3 text-[#b9a692]">更新于 2021/04/21 22:00 HKT</p>
+          <p className="text-helper mt-3 text-[#b9a692]">
+            更新于 {summary?.updatedAt ?? "—"}
+          </p>
           <p className="text-label mt-1 text-[#c4b19b]">* 赚蚀以平均买入价与现价港元估计</p>
         </div>
       </div>

@@ -35,11 +35,11 @@ export default function ProfileSummaryCard({
     weeklyTradesRequired: 4,
     weeklyTradesRemaining: 2,
     initialCapital: "HK$ 1,000,000.00",
-    bonusAmount: "HK$ 50,000.00",
-    portfolioValue: "HK$ 513,910.00",
-    availableCash: "HK$ 379,562.10",
-    totalAssets: "HK$ 893,472.10",
-    updatedAt: "2021-04-21T22:00:00+08:00",
+    bonusAmount: "HK$ 0.00",
+    portfolioValue: "HK$ 0.00",
+    availableCash: "HK$ 1,000,000.00",
+    totalAssets: "HK$ 1,000,000.00",
+    updatedAt: "2026-04-21T22:00:00+08:00",
   };
 
   const content = (

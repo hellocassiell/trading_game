@@ -45,6 +45,14 @@ public class UserProfileService {
         return profile == null ? null : profile.avatarId;
     }
 
+    public boolean hasCompletedProfile(String userId) {
+        UserProfile profile = profileStore.get(normalizeKey(userId));
+        if (profile == null) {
+            return false;
+        }
+        return !isBlank(profile.nickname) && !isBlank(profile.avatarId);
+    }
+
     public String getPhone(String userId) {
         String safeUserId = normalizeKey(userId);
         if (safeUserId == null) {

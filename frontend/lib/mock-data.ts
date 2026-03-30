@@ -231,44 +231,119 @@ export const strongestUsers = [
 
 export const starParticipants = {
   tabs: ["青姐", "沈大师", "英sir"] as const,
-  featured: {
-    name: "青姐",
-    tag: "独立股评人",
-    intro: "留意强势科技股回调后的承接力，优先观察 0700 腾讯控股 与 9988 阿里巴巴-SW。",
-    marketValue: "513,910.000",
-    cash: "379,562.000",
-    totalAssets: "947,321.640",
-    chartLabels: ["26/04", "27/04", "28/04", "29/04", "今日"] as const,
-    chartValues: [20, 24, 78, 118, 126] as const,
-    updatedAt: "2021/04/21 22:00 HKT",
-  },
-  holdingsTitle: "港股持仓 - 青姐",
   currencyLabel: "货币 (港币)",
-  holdings: [
-    {
-      symbol: "0700",
-      quantity: "1,000",
-      available: "1,000",
-      profit: "+100.23%",
-      currentPrice: "323.400",
-      change: "+5.200 (1.63%)",
-      referenceValue: "323,400",
-      positive: true,
+  items: {
+    青姐: {
+      featured: {
+        name: "青姐",
+        tag: "独立股评人",
+        intro: "留意强势科技股回调后的承接力，优先观察 0700 腾讯控股 与 9988 阿里巴巴-SW。",
+        marketValue: "513,910.000",
+        cash: "379,562.000",
+        totalAssets: "947,321.640",
+        chartLabels: ["26/04", "27/04", "28/04", "29/04", "今日"] as const,
+        chartValues: [20, 24, 78, 118, 126] as const,
+        updatedAt: "2026/04/21 22:00 HKT",
+      },
+      holdingsTitle: "港股持仓 - 青姐",
+      holdings: [
+        {
+          symbol: "0700",
+          quantity: "1,000",
+          available: "1,000",
+          profit: "+100.23%",
+          currentPrice: "323.400",
+          change: "+5.200 (1.63%)",
+          referenceValue: "323,400",
+          positive: true,
+        },
+        {
+          symbol: "9988",
+          quantity: "2,000",
+          available: "2,000",
+          profit: "-10.20%",
+          currentPrice: "80.550",
+          change: "-1.750 (2.13%)",
+          referenceValue: "161,100",
+          positive: false,
+        },
+      ] as const,
     },
-    {
-      symbol: "9988",
-      quantity: "2,000",
-      available: "2,000",
-      profit: "-10.20%",
-      currentPrice: "80.550",
-      change: "-1.750 (2.13%)",
-      referenceValue: "161,100",
-      positive: false,
+    沈大师: {
+      featured: {
+        name: "沈大师",
+        tag: "港股策略达人",
+        intro: "港股ETF与蓝筹轮动，关注 0388 香港交易所 与 2800 盈富基金。",
+        marketValue: "602,130.000",
+        cash: "298,450.000",
+        totalAssets: "900,580.000",
+        chartLabels: ["26/04", "27/04", "28/04", "29/04", "今日"] as const,
+        chartValues: [18, 30, 60, 90, 110] as const,
+        updatedAt: "2026/04/21 22:00 HKT",
+      },
+      holdingsTitle: "港股持仓 - 沈大师",
+      holdings: [
+        {
+          symbol: "0388",
+          quantity: "800",
+          available: "800",
+          profit: "+12.20%",
+          currentPrice: "245.600",
+          change: "+2.200 (0.90%)",
+          referenceValue: "196,480",
+          positive: true,
+        },
+        {
+          symbol: "2800",
+          quantity: "1,200",
+          available: "1,200",
+          profit: "+6.80%",
+          currentPrice: "19.240",
+          change: "+0.120 (0.63%)",
+          referenceValue: "23,088",
+          positive: true,
+        },
+      ] as const,
     },
-  ] as const,
-  disclaimer:
-    "以上星级推介均属虚拟性质，只适用于 AASTOCKS 智财投资大赛平台。",
-  footerUpdatedAt: "2021/04/21 22:00 HKT",
+    "英sir": {
+      featured: {
+        name: "英sir",
+        tag: "技术派操盘手",
+        intro: "波动行情下严控仓位，关注 3690 美团-W 与 1211 比亚迪股份。",
+        marketValue: "498,220.000",
+        cash: "420,360.000",
+        totalAssets: "918,580.000",
+        chartLabels: ["26/04", "27/04", "28/04", "29/04", "今日"] as const,
+        chartValues: [22, 28, 54, 88, 104] as const,
+        updatedAt: "2026/04/21 22:00 HKT",
+      },
+      holdingsTitle: "港股持仓 - 英sir",
+      holdings: [
+        {
+          symbol: "3690",
+          quantity: "600",
+          available: "600",
+          profit: "-4.20%",
+          currentPrice: "128.600",
+          change: "-1.200 (0.93%)",
+          referenceValue: "77,160",
+          positive: false,
+        },
+        {
+          symbol: "1211",
+          quantity: "400",
+          available: "400",
+          profit: "+8.10%",
+          currentPrice: "201.800",
+          change: "+3.200 (1.61%)",
+          referenceValue: "80,720",
+          positive: true,
+        },
+      ] as const,
+    },
+  },
+  disclaimer: "以上星级推介均属虚拟性质，只适用于 AASTOCKS 智财投资大赛平台。",
+  footerUpdatedAt: "2026/04/21 22:00 HKT",
 } as const;
 
 export const starRankingList = [
@@ -319,6 +394,8 @@ export const homeEventStats = [
   },
 ] as const;
 
+export const homeEventStatsUpdatedAt = "2026/04/21 22:00 HKT";
+
 export const homeSummaryCard = {
   name: "Joey Cheung",
   rank: "91",
@@ -330,18 +407,36 @@ export const homeSummaryCard = {
   referenceValue: "513,910.000",
   cash: "379,562.100",
   totalAssets: "947,321.640",
-  updatedAt: "2021/04/21 22:00 HKT",
+  updatedAt: "2026/04/21 22:00 HKT",
 } as const;
 
 export const homeStarParticipants = {
   tabs: ["青姐", "沈大师", "英sir"] as const,
-  featured: {
-    name: "青姐",
-    tag: "独立股评人",
-    intro: "今日留意 0700 腾讯控股回调吸纳机会，并观察 9988 阿里巴巴-SW 成交量变化。",
-    totalAssets: "1,656,735.000 港元",
-    holding: "0700",
-    recentTrade: "买入 9988",
+  items: {
+    青姐: {
+      name: "青姐",
+      tag: "独立股评人",
+      intro: "今日留意 0700 腾讯控股回调吸纳机会，并观察 9988 阿里巴巴-SW 成交量变化。",
+      totalAssets: "1,656,735.000 港元",
+      holding: "0700",
+      recentTrade: "买入 9988",
+    },
+    沈大师: {
+      name: "沈大师",
+      tag: "港股策略达人",
+      intro: "关注 0388 香港交易所与 2800 盈富基金，等待盘中回踩。",
+      totalAssets: "1,602,418.000 港元",
+      holding: "0388",
+      recentTrade: "买入 2800",
+    },
+    "英sir": {
+      name: "英sir",
+      tag: "技术派操盘手",
+      intro: "今日观察 3690 美团-W 与 1211 比亚迪股份波动。",
+      totalAssets: "1,542,936.000 港元",
+      holding: "3690",
+      recentTrade: "卖出 1211",
+    },
   },
 } as const;
 
@@ -352,6 +447,8 @@ export const homeHoldingCloud = [
   { rank: "第3名", symbol: "3690", value: "19.1", unit: "亿港元", size: 110, left: 226, top: 92 },
   { rank: "第5名", symbol: "1211", value: "17.2", unit: "亿港元", size: 92, left: 286, top: 28 },
 ] as const;
+
+export const homeHoldingCloudUpdatedAt = "2026/04/21 22:00 HKT";
 
 export const homeVolumeSnapshot = {
   buy: {
@@ -368,18 +465,42 @@ export const homeVolumeSnapshot = {
   },
 } as const;
 
+export const homeVolumeSnapshotUpdatedAt = "2026/04/21 22:00 HKT";
+
 export const homeWeeklyFlyers = {
   tabs: ["第一名", "第二名", "第三名"] as const,
-  featured: {
-    name: "Kit Chu",
-    tag: "第一名得奖者",
-    period: "2026/04/25 至2026/04/29",
-    gainLabel: "得奖纪录",
-    gain: "+93%",
-    riseLabel: "排名上升",
-    rise: "10183",
+  items: {
+    第一名: {
+      name: "Kit Chu",
+      tag: "第一名得奖者",
+      period: "2026/04/25 至2026/04/29",
+      gainLabel: "得奖纪录",
+      gain: "+93%",
+      riseLabel: "排名上升",
+      rise: "10183",
+    },
+    第二名: {
+      name: "Amanda Lau",
+      tag: "第二名得奖者",
+      period: "2026/04/25 至2026/04/29",
+      gainLabel: "得奖纪录",
+      gain: "+88%",
+      riseLabel: "排名上升",
+      rise: "9450",
+    },
+    第三名: {
+      name: "Raymond Wong",
+      tag: "第三名得奖者",
+      period: "2026/04/25 至2026/04/29",
+      gainLabel: "得奖纪录",
+      gain: "+82%",
+      riseLabel: "排名上升",
+      rise: "8124",
+    },
   },
 } as const;
+
+export const homeRankingUpdatedAt = "2026/04/21 22:00 HKT";
 
 export const homeRankingRows = [
   { rank: "1", movement: "flat", name: "Mary Lee", amount: "HK$3,228,531", gain: "+93%" },

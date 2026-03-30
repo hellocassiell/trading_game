@@ -46,8 +46,8 @@ export default function TopHoldingsPage() {
         </div>
 
         <div className="text-helper grid grid-cols-[1fr_auto] items-center border-b border-[#ece3d8] px-4 py-2.5 font-semibold text-[#b3a79b]">
-          <span>代號及名稱</span>
-          <span>持倉總額/變動</span>
+          <span>代号及名称</span>
+          <span>持仓总额/变动</span>
         </div>
 
         <div className="relative overflow-hidden bg-white">
@@ -88,7 +88,7 @@ export default function TopHoldingsPage() {
         </div>
 
         <div className="text-helper px-4 py-3 text-[#b5a89a]">
-          最後更新 {updatedAt}
+          最后更新 {updatedAt}
         </div>
       </div>
     </AppScreen>

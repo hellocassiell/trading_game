@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -107,17 +107,53 @@ export default function HomePage() {
     status,
     appMeta,
     eventStats: homeEventStats,
+    eventStatsUpdatedAt,
     summaryCard: homeSummaryCard,
     starParticipants: homeStarParticipants,
     holdingCloud: homeHoldingCloud,
+    holdingCloudUpdatedAt,
     volumeSnapshot: homeVolumeSnapshot,
+    volumeSnapshotUpdatedAt,
     weeklyFlyers: homeWeeklyFlyers,
     rankingRows: homeRankingRows,
+    rankingUpdatedAt,
   } = getHomePageData();
   const [homeSummaryState, setHomeSummaryState] = useState<Record<keyof typeof homeSummaryCard, string>>({
     ...homeSummaryCard,
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [summaryLoadState, setSummaryLoadState] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
+  const [activeStarTab, setActiveStarTab] = useState<(typeof homeStarParticipants.tabs)[number]>(
+    homeStarParticipants.tabs[0],
+  );
+  const [activeWeeklyTab, setActiveWeeklyTab] = useState<(typeof homeWeeklyFlyers.tabs)[number]>(
+    homeWeeklyFlyers.tabs[0],
+  );
+
+  const starFeatured = useMemo(
+    () => homeStarParticipants.items[activeStarTab],
+    [activeStarTab, homeStarParticipants.items],
+  );
+  const weeklyFeatured = useMemo(
+    () => homeWeeklyFlyers.items[activeWeeklyTab],
+    [activeWeeklyTab, homeWeeklyFlyers.items],
+  );
+  const rankDeltaValue = Number(homeSummaryState.rankRise);
+  const rankDeltaLabel = Number.isFinite(rankDeltaValue)
+    ? rankDeltaValue === 0
+      ? "—"
+      : rankDeltaValue > 0
+        ? `↑ ${rankDeltaValue}`
+        : `↓ ${Math.abs(rankDeltaValue)}`
+    : "—";
+  const rankDeltaTone = Number.isFinite(rankDeltaValue)
+    ? rankDeltaValue > 0
+      ? "text-[#2eb568]"
+      : rankDeltaValue < 0
+        ? "text-[#ef655d]"
+        : "text-[#b8a08a]"
+    : "text-[#b8a08a]";
 
   useEffect(() => {
     let cancelled = false;
@@ -130,15 +166,17 @@ export default function HomePage() {
           setIsLoggedIn(loggedIn);
         }
         if (!loggedIn) {
+          setSummaryLoadState("idle");
           return;
         }
+        setSummaryLoadState("loading");
         const account = await tradingApiClient.getAccountAssets(session?.userId);
         if (cancelled) {
           return;
         }
-        setHomeSummaryState({
-          ...homeSummaryCard,
-          name: session?.nickname || account.nickname || homeSummaryState.name,
+        setHomeSummaryState((prev) => ({
+          ...prev,
+          name: session?.nickname || account.nickname || prev.name,
           rank: String(account.rank),
           rankRise: String(account.rankDelta),
           dailyTradesValue: `${account.dailyTradesRemaining}次`,
@@ -157,10 +195,11 @@ export default function HomePage() {
             maximumFractionDigits: 2,
           }),
           updatedAt: account.updatedAt,
-        });
+        }));
+        setSummaryLoadState("success");
       } catch {
         if (!cancelled) {
-          setIsLoggedIn(false);
+          setSummaryLoadState("error");
         }
       }
     }
@@ -169,7 +208,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [homeSummaryCard]);
+  }, [homeSummaryCard, summaryRefreshKey]);
 
   if (status === "error") {
     return (
@@ -265,9 +304,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <p className="mt-4 text-[11px] font-medium text-[#b19573]">
-            最後更新 2021/04/21 22:00 HKT
-          </p>
+          <p className="mt-4 text-[11px] font-medium text-[#b19573]">最后更新 {eventStatsUpdatedAt}</p>
         </div>
       </header>
 
@@ -298,78 +335,110 @@ export default function HomePage() {
         </Link>
 
         {isLoggedIn ? (
-        <section className="overflow-hidden rounded-[24px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-[#f0ece7]" />
-              <div className="min-w-0">
-                <p className="truncate text-[16px] font-black leading-none text-[#26180f]">
-                  {homeSummaryState.name}
-                </p>
+          <section className="overflow-hidden rounded-[24px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
+            {summaryLoadState === "loading" ? (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="state-skeleton h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                      <div className="state-skeleton h-4 w-28" />
+                      <div className="state-skeleton h-4 w-20" />
+                    </div>
+                  </div>
+                  <div className="state-skeleton h-8 w-24 rounded-full" />
+                </div>
+                <div className="state-skeleton h-20 w-full rounded-[20px]" />
+                <div className="state-skeleton h-16 w-full rounded-[20px]" />
               </div>
-            </div>
+            ) : summaryLoadState === "error" ? (
+              <div className="py-4 text-center">
+                <p className="text-[14px] font-semibold text-[#7f6a55]">资料加载失败</p>
+                <button
+                  type="button"
+                  onClick={() => setSummaryRefreshKey((prev) => prev + 1)}
+                  className="mt-3 h-9 rounded-full bg-[var(--app-orange-dark)] px-5 text-[13px] font-bold text-white"
+                >
+                  重新载入
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-[#f0ece7]" />
+                    <div className="min-w-0">
+                      <p className="truncate text-[16px] font-black leading-none text-[#26180f]">
+                        {homeSummaryState.name}
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="shrink-0 rounded-full bg-[#fff4e5] px-3 py-1.5 text-[13px] font-black text-[#6b4a21]">
-              <span className="inline-flex items-center gap-1">
-                <Trophy className="h-4 w-4 text-[var(--app-orange-dark)]" />
-                排名 {homeSummaryState.rank}
-                <span className="text-[#2eb568]">↑ {homeSummaryState.rankRise}</span>
-              </span>
-            </div>
-          </div>
+                  <div className="shrink-0 rounded-full bg-[#fff4e5] px-3 py-1.5 text-[13px] font-black text-[#6b4a21]">
+                    <span className="inline-flex items-center gap-1">
+                      <Trophy className="h-4 w-4 text-[var(--app-orange-dark)]" />
+                      排名 {homeSummaryState.rank}
+                      <span className={rankDeltaTone}>{rankDeltaLabel}</span>
+                    </span>
+                  </div>
+                </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-4 text-[14px] font-bold text-[#4d3826]">
-            <div>
-              <p>{homeSummaryState.dailyTrades}</p>
-              <p className="mt-1">{homeSummaryState.requiredTrades}</p>
-            </div>
-            <div className="text-right">
-              <p>
-                尚余 <span className="text-[20px] font-black">{homeSummaryState.dailyTradesValue}</span>
-              </p>
-              <p className="mt-1">
-                尚欠 <span className="text-[20px] font-black text-[#ef655d]">{homeSummaryState.requiredTradesValue}</span>
-              </p>
-            </div>
-          </div>
+                <div className="mt-4 grid grid-cols-2 gap-4 text-[14px] font-bold text-[#4d3826]">
+                  <div>
+                    <p>{homeSummaryState.dailyTrades}</p>
+                    <p className="mt-1">{homeSummaryState.requiredTrades}</p>
+                  </div>
+                  <div className="text-right">
+                    <p>
+                      尚余 <span className="text-[20px] font-black">{homeSummaryState.dailyTradesValue}</span>
+                    </p>
+                    <p className="mt-1">
+                      尚欠{" "}
+                      <span className="text-[20px] font-black text-[#ef655d]">
+                        {homeSummaryState.requiredTradesValue}
+                      </span>
+                    </p>
+                  </div>
+                </div>
 
-          <div className="mt-4 space-y-2 rounded-[20px] bg-[#fffaf4] px-3.5 py-3">
-            <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#7a624a]">
-              <span>证券参考市值</span>
-              <span className="text-[18px] font-black text-[#291b12]">
-                {homeSummaryState.referenceValue} 港元
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#7a624a]">
-              <span>可投资馀额</span>
-              <span className="text-[18px] font-black text-[#291b12]">{homeSummaryState.cash} 港元</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#5f472d]">
-              <span>资产总值</span>
-              <span className="text-[20px] font-black text-[var(--app-orange-dark)]">
-                {homeSummaryState.totalAssets} 港元
-              </span>
-            </div>
-          </div>
+                <div className="mt-4 space-y-2 rounded-[20px] bg-[#fffaf4] px-3.5 py-3">
+                  <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#7a624a]">
+                    <span>证券参考市值</span>
+                    <span className="text-[18px] font-black text-[#291b12]">
+                      {homeSummaryState.referenceValue} 港元
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#7a624a]">
+                    <span>可投资余额</span>
+                    <span className="text-[18px] font-black text-[#291b12]">{homeSummaryState.cash} 港元</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-[15px] font-bold text-[#5f472d]">
+                    <span>资产总值</span>
+                    <span className="text-[20px] font-black text-[var(--app-orange-dark)]">
+                      {homeSummaryState.totalAssets} 港元
+                    </span>
+                  </div>
+                </div>
 
-          <p className="mt-3 text-[11px] font-medium text-[#b19573]">
-            资料更新 {homeSummaryState.updatedAt}
-          </p>
-        </section>
+                <p className="mt-3 text-[11px] font-medium text-[#b19573]">
+                  资料更新 {homeSummaryState.updatedAt}
+                </p>
+              </>
+            )}
+          </section>
         ) : null}
 
         <section className="space-y-3">
           <SectionTitle title="星级参赛者" href="/ranking" />
 
           <div className="flex gap-2">
-            {homeStarParticipants.tabs.map((tab, index) => (
+            {homeStarParticipants.tabs.map((tab) => (
               <button
                 key={tab}
                 type="button"
+                onClick={() => setActiveStarTab(tab)}
                 className={`rounded-full px-4 py-2 text-[17px] font-black leading-none ${
-                  index === 0
-                    ? "bg-[#ffe8c5] text-[#bf7210]"
-                    : "bg-[#fff5e7] text-[#c59d6c]"
+                  tab === activeStarTab ? "bg-[#ffe8c5] text-[#bf7210]" : "bg-[#fff5e7] text-[#c59d6c]"
                 }`}
               >
                 {tab}
@@ -389,30 +458,30 @@ export default function HomePage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                     <p className="text-[20px] font-black leading-none text-[#26180f]">
-                      {homeStarParticipants.featured.name}
+                      {starFeatured.name}
                     </p>
                     <span className="inline-flex items-center gap-1 rounded-full bg-[#fff2dc] px-3 py-1 text-[13px] font-black text-[#6e4b21]">
                       <Medal className="h-4 w-4 text-[var(--app-orange-dark)]" />
-                      {homeStarParticipants.featured.tag}
+                      {starFeatured.tag}
                     </span>
                 </div>
 
                 <p className="mt-3 text-[17px] font-medium leading-[1.3] text-[#4a3828]">
-                  {homeStarParticipants.featured.intro}
+                  {starFeatured.intro}
                 </p>
 
                 <div className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-[15px]">
                   <span className="font-bold text-[#9f8d78]">资产总值</span>
                   <span className="text-right text-[20px] font-black text-[var(--app-orange-dark)]">
-                    {homeStarParticipants.featured.totalAssets}
+                    {starFeatured.totalAssets}
                   </span>
                   <span className="font-bold text-[#9f8d78]">重仓港股</span>
                   <span className="text-right text-[19px] font-black text-[#2b1d13]">
-                    {homeStarParticipants.featured.holding}
+                    {starFeatured.holding}
                   </span>
                   <span className="font-bold text-[#9f8d78]">最近交易</span>
                   <span className="text-right text-[19px] font-black text-[#2b1d13]">
-                    {homeStarParticipants.featured.recentTrade}
+                    {starFeatured.recentTrade}
                   </span>
                 </div>
               </div>
@@ -453,7 +522,7 @@ export default function HomePage() {
             ))}
 
             <p className="absolute bottom-4 left-4 text-[11px] font-medium text-[#b19573]">
-              最後更新 2021/04/21 22:00 HKT
+              最后更新 {holdingCloudUpdatedAt}
             </p>
           </div>
         </section>
@@ -472,7 +541,7 @@ export default function HomePage() {
                   <p className="text-[14px] font-bold text-[#f18917]">
                     {homeVolumeSnapshot.buy.label}
                   </p>
-                  <p className="mt-1 text-[26px] font-black leading-none text-[#271910]">
+                  <p className="mt-1 text-[22px] font-black leading-none text-[#271910]">
                     {homeVolumeSnapshot.buy.symbol}
                   </p>
                 </div>
@@ -482,7 +551,7 @@ export default function HomePage() {
                 <p className="text-[14px] font-bold text-[#d2a06d]">
                   {homeVolumeSnapshot.buy.amountLabel}
                 </p>
-                <p className="mt-1 text-[23px] font-black leading-none text-[#271910]">
+                <p className="mt-1 text-[20px] font-black leading-none text-[#271910]">
                   {homeVolumeSnapshot.buy.amount}
                 </p>
               </div>
@@ -498,7 +567,7 @@ export default function HomePage() {
                   <p className="text-[14px] font-bold text-[var(--app-orange-dark)]">
                     {homeVolumeSnapshot.sell.label}
                   </p>
-                  <p className="mt-1 text-[26px] font-black leading-none text-[#271910]">
+                  <p className="mt-1 text-[22px] font-black leading-none text-[#271910]">
                     {homeVolumeSnapshot.sell.symbol}
                   </p>
                 </div>
@@ -508,14 +577,14 @@ export default function HomePage() {
                 <p className="text-[14px] font-bold text-[#d2a06d]">
                   {homeVolumeSnapshot.sell.amountLabel}
                 </p>
-                <p className="mt-1 text-[23px] font-black leading-none text-[#271910]">
+                <p className="mt-1 text-[20px] font-black leading-none text-[#271910]">
                   {homeVolumeSnapshot.sell.amount}
                 </p>
               </div>
             </TradeTrigger>
 
             <p className="mt-4 text-[11px] font-medium text-[#b19573]">
-              最後更新 2021/04/21 22:00 HKT
+              最后更新 {volumeSnapshotUpdatedAt}
             </p>
           </div>
         </section>
@@ -524,14 +593,13 @@ export default function HomePage() {
           <SectionTitle title="每周飞跃王" />
 
           <div className="flex gap-2">
-            {homeWeeklyFlyers.tabs.map((tab, index) => (
+            {homeWeeklyFlyers.tabs.map((tab) => (
               <button
                 key={tab}
                 type="button"
+                onClick={() => setActiveWeeklyTab(tab)}
                 className={`rounded-full px-4 py-2 text-[17px] font-black leading-none ${
-                  index === 0
-                    ? "bg-[#ffe8c5] text-[#bf7210]"
-                    : "bg-[#fff5e7] text-[#c59d6c]"
+                  tab === activeWeeklyTab ? "bg-[#ffe8c5] text-[#bf7210]" : "bg-[#fff5e7] text-[#c59d6c]"
                 }`}
               >
                 {tab}
@@ -543,30 +611,30 @@ export default function HomePage() {
             <div className="pointer-events-none absolute inset-y-6 right-8 w-[120px] rotate-12 rounded-[20px] border border-[#f4eadb] bg-[#fffaf3]/80" />
 
             <div className="relative">
-              <p className="text-[24px] font-black leading-none text-[#26180f]">
-                {homeWeeklyFlyers.featured.name}
+              <p className="text-[20px] font-black leading-none text-[#26180f]">
+                {weeklyFeatured.name}
               </p>
               <p className="mt-1 inline-flex items-center gap-1 text-[14px] font-bold text-[#8a7053]">
                 <Trophy className="h-4 w-4 text-[var(--app-orange-dark)]" />
-                {homeWeeklyFlyers.featured.tag}
+                {weeklyFeatured.tag}
               </p>
 
               <div className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2">
                 <span className="text-[15px] font-bold text-[#9f8d78]">
-                  {homeWeeklyFlyers.featured.period}
+                  {weeklyFeatured.period}
                 </span>
                 <span className="text-[15px] font-bold text-[#9f8d78]">
-                  {homeWeeklyFlyers.featured.gainLabel}
+                  {weeklyFeatured.gainLabel}
                 </span>
-                <span className="text-[20px] font-black text-[#2c1e14]">整体变动</span>
-                <span className="text-right text-[28px] font-black leading-none text-[#2eb568]">
-                  {homeWeeklyFlyers.featured.gain}
+                <span className="text-[18px] font-black text-[#2c1e14]">整体变动</span>
+                <span className="text-right text-[24px] font-black leading-none text-[#2eb568]">
+                  {weeklyFeatured.gain}
                 </span>
-                <span className="text-[20px] font-black text-[#2c1e14]">
-                  {homeWeeklyFlyers.featured.riseLabel}
+                <span className="text-[18px] font-black text-[#2c1e14]">
+                  {weeklyFeatured.riseLabel}
                 </span>
-                <span className="text-right text-[28px] font-black leading-none text-[#2eb568]">
-                  ↑ {homeWeeklyFlyers.featured.rise}
+                <span className="text-right text-[24px] font-black leading-none text-[#2eb568]">
+                  ↑ {weeklyFeatured.rise}
                 </span>
               </div>
             </div>
@@ -577,7 +645,7 @@ export default function HomePage() {
           <SectionTitle title="排行榜" href="/ranking" />
 
           <div className="overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
-            <div className="grid grid-cols-[92px_1fr_auto] items-end gap-2 border-b border-[#f0e5d8] px-4 pb-3 pt-4">
+            <div className="grid grid-cols-[auto_1fr_auto] items-end gap-2 border-b border-[#f0e5d8] px-4 pb-3 pt-4">
               <div>
                 <p className="text-[14px] font-bold text-[#aa9781]">排名/变动</p>
                 <p className="mt-1 text-[15px] font-bold text-[#aa9781]">参赛者</p>
@@ -596,27 +664,27 @@ export default function HomePage() {
               {homeRankingRows.map((item, index) => (
                 <div
                   key={`${item.rank}-${item.name}`}
-                  className={`grid grid-cols-[92px_1fr_auto] items-center gap-2 py-3 ${
+                  className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 py-3 ${
                     index !== 0 ? "border-t border-[#f5ede2]" : ""
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-fit items-center gap-2">
                     <RankingMedal rank={item.rank} />
                     <RankingMovement movement={item.movement} />
                   </div>
 
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="h-10 w-10 shrink-0 rounded-full bg-[#f0ece7]" />
-                    <p className="truncate text-[20px] font-black leading-none text-[#2a1b12]">
+                    <p className="truncate text-[17px] font-black leading-none text-[#2a1b12]">
                       {item.name}
                     </p>
                   </div>
 
                   <div className="text-right">
-                    <p className="text-[19px] font-black leading-none text-[#2a1b12]">
+                    <p className="text-[16px] font-black leading-none text-[#2a1b12]">
                       {item.amount}
                     </p>
-                    <p className="mt-1 text-[16px] font-black leading-none text-[#2eb568]">
+                    <p className="mt-1 text-[14px] font-black leading-none text-[#2eb568]">
                       {item.gain}
                     </p>
                   </div>
@@ -624,9 +692,7 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="px-4 pb-3 pt-2 text-[11px] font-medium text-[#b19573]">
-              截至 2021/04/21 22:00 HKT
-            </div>
+            <div className="px-4 pb-3 pt-2 text-[11px] font-medium text-[#b19573]">截至 {rankingUpdatedAt}</div>
 
             <div className="pb-4">
               <div className="mx-auto flex h-6 w-14 items-center justify-center rounded-full bg-[#fff3e4] text-[#d07e0f]">

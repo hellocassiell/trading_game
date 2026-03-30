@@ -7,6 +7,7 @@ import type {
   TradeOrderDraft,
   TradeHistoryItem,
   TradeCancelResult,
+  TradeOrderStatus,
   TradeSubmitResult,
 } from "./types";
 
@@ -119,6 +120,43 @@ export const tradingApiClient = {
           error instanceof Error
             ? error.message
             : "网络异常，暂时无法取消订单",
+      };
+    }
+  },
+  async amendOrder(
+    orderId: string,
+    price: number,
+    quantity: number,
+    userId?: string
+  ): Promise<
+    | { ok: true; orderId: string; status: TradeOrderStatus }
+    | { ok: false; message: string }
+  > {
+    try {
+      const data = await fetchBackendResult<{
+        orderId: string;
+        status: TradeOrderStatus;
+      }>(
+        `/api/v1/trade/orders/${orderId}/amend`,
+        {
+          method: "POST",
+          body: JSON.stringify({ price, quantity }),
+        },
+        userId
+      );
+
+      return {
+        ok: true,
+        orderId: data.orderId,
+        status: data.status,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "网络异常，暂时无法修改订单",
       };
     }
   },

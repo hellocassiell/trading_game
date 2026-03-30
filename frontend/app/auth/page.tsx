@@ -7,11 +7,10 @@ import {
   clearAuthDraft,
   createAuthSession,
   getAuthEntryViewModel,
-  readAuthDraft,
   requestAuthCode,
-  saveAuthDraft,
   verifyAuthCodeAndCreateSession,
 } from "../../lib/adapters/auth";
+import { tradingApiClient } from "../../lib/api";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -40,35 +39,12 @@ export default function AuthPage() {
   }, [normalizedPhone]);
 
   useEffect(() => {
-    const draft = readAuthDraft();
-    if (draft.phone) {
-      setPhone(draft.phone);
-    }
-    if (draft.code) {
-      setCode(draft.code);
-    }
-    if (typeof draft.agreed === "boolean") {
-      setAgreed(draft.agreed);
-    }
-    saveAuthDraft({ step: "form" });
-  }, []);
-
-  useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
     const params = new URLSearchParams(window.location.search);
     setShowLeaveConfirm(params.get("modal") === "leave");
   }, []);
-
-  useEffect(() => {
-    saveAuthDraft({
-      phone: normalizedPhone,
-      code: normalizedCode,
-      agreed,
-      step: "form",
-    });
-  }, [agreed, normalizedCode, normalizedPhone]);
 
   useEffect(() => {
     if (countdown <= 0) {
@@ -135,7 +111,6 @@ export default function AuthPage() {
       setIsVerifying(true);
       setErrorMessage("");
       const session = await verifyAuthCodeAndCreateSession(normalizedPhone, normalizedCode);
-      saveAuthDraft({ phone: normalizedPhone, code: normalizedCode, step: "invite" });
       // 先把后端返回的基础信息写入 session，头像和昵称在下一步补齐。
       createAuthSession({
         phone: normalizedPhone,
@@ -145,7 +120,21 @@ export default function AuthPage() {
         userId: session.userId,
         token: session.token,
       });
-      router.push("/auth/invite");
+      if (session.profileCompleted) {
+        const account = await tradingApiClient.getAccountAssets(session.userId);
+        createAuthSession({
+          phone: normalizedPhone,
+          nickname: account.nickname ?? "",
+          avatarId: account.avatar ?? "",
+          loggedInAt: new Date().toISOString(),
+          userId: session.userId,
+          token: session.token,
+        });
+        clearAuthDraft();
+        router.push("/");
+      } else {
+        router.push("/auth/invite");
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "验证码校验失败，请稍后再试";
       setErrorMessage(message);

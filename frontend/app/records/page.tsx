@@ -164,6 +164,10 @@ export default function RecordsPage() {
       const customEvent = event as CustomEvent<{ type?: string; message?: string }>;
       if (customEvent.detail?.type === "cancel_success") {
         setToastMessage(customEvent.detail.message || "取消订单成功");
+      } else if (customEvent.detail?.type === "amend_success") {
+        setToastMessage(customEvent.detail.message || "改单成功");
+      } else if (customEvent.detail?.type === "submit_success") {
+        setToastMessage(customEvent.detail.message || "下单成功");
       }
       setRefreshKey((current) => current + 1);
     };

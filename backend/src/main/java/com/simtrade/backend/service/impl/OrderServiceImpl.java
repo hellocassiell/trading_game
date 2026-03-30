@@ -260,18 +260,32 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 currentPrice.add(tickSize.multiply(new BigDecimal("20")))
         );
         validateLimitQueueLimit(userId, "LIMIT", orderId);
-
-        order.setPrice(request.getPrice());
-        order.setQuantity(request.getQuantity());
-        order.setUpdateTime(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        Order canceledOrder = cloneOrder(order);
+        canceledOrder.setStatus(STATUS_CANCELED);
+        canceledOrder.setUpdateTime(now);
         try {
-            this.updateById(order);
+            this.updateById(canceledOrder);
         } catch (Exception e) {
-            log.warn("Amend order db update failed, fallback to in-memory only. orderId={}, reason={}",
-                    orderId, e.getMessage());
+            log.warn("Cancel original order failed during amend. orderId={}, reason={}", orderId, e.getMessage());
         }
-        saveToLocalStore(order, "LIMIT");
-        return cloneOrder(order);
+        saveToLocalStore(canceledOrder, getOrderType(orderId));
+
+        Order amendedOrder = buildPendingOrder(
+                userId,
+                order.getStockCode(),
+                safeInt(order.getType()),
+                request.getPrice(),
+                request.getQuantity()
+        );
+        try {
+            this.save(amendedOrder);
+        } catch (Exception e) {
+            log.warn("Persist amended order failed, fallback to in-memory only. orderId={}, reason={}",
+                    amendedOrder.getId(), e.getMessage());
+        }
+        saveToLocalStore(amendedOrder, "LIMIT");
+        return cloneOrder(amendedOrder);
     }
 
     @Override
@@ -323,6 +337,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         validateTradingWindow(orderType, tradingWindowContext);
         validatePriceFloor(type, effectivePrice);
         validateLotSize(stockCode, quantity);
+        validateSellHoldings(userId, stockCode, type, quantity);
         if ("LIMIT".equals(orderType)) {
             validatePriceRange(effectivePrice, limitPriceMin, limitPriceMax);
         }
@@ -365,6 +380,36 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (quantity % lotSize != 0) {
             throw new IllegalArgumentException("Quantity must be a multiple of lot size: " + lotSize);
         }
+    }
+
+    private void validateSellHoldings(String userId, String stockCode, int type, Integer quantity) {
+        if (type != TYPE_SELL) {
+            return;
+        }
+        int available = resolveAvailableHoldings(userId, stockCode);
+        if (quantity > available) {
+            throw new IllegalArgumentException("Insufficient holdings to sell. Available: " + available);
+        }
+    }
+
+    private int resolveAvailableHoldings(String userId, String stockCode) {
+        int net = 0;
+        for (Order order : listOrdersByUser(userId)) {
+            if (order == null || !stockCode.equals(order.getStockCode())) {
+                continue;
+            }
+            int filled = safeInt(order.getFilledQuantity());
+            if (filled <= 0) {
+                continue;
+            }
+            int orderType = safeInt(order.getType());
+            if (orderType == TYPE_BUY) {
+                net += filled;
+            } else if (orderType == TYPE_SELL) {
+                net -= filled;
+            }
+        }
+        return Math.max(net, 0);
     }
 
     private void validatePriceRange(BigDecimal price, BigDecimal minPrice, BigDecimal maxPrice) {
