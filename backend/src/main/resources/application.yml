@@ -35,7 +35,23 @@ mybatis-plus:
 # 第三方行情 AOB 接口配置
 aob:
   host: http://api.aob.example.com
+  mq:
+    quote-queue: market.data.queue
+  subscription:
+    enabled: false
+    exchange: subscribe.exchange
+    routing-key: subscribe.key
+    asset-ids: 00700.HK,02800.HK,0388.HK,2800.HK
+    command-code: 1
+    market-type-hk: 1
+    quote-level-lv2: 2
+    type: 0
 
 app:
   cors:
-    allowed-origin-patterns: http://localhost:*,http://127.0.0.1:*
+    allowed-origin-patterns: http://localhost:*,http://127.0.0.1:*,http://99.17.119.184:*,http://10.47.149.92:*
+  avatar:
+    upload-dir: uploads/avatars
+
+trading:
+  hk-holidays: 2026-01-01,2026-02-17,2026-02-18,2026-04-03,2026-04-06,2026-05-01,2026-07-01,2026-10-01,2026-12-25

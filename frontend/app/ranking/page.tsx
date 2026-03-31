@@ -1,12 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, UserRound } from "lucide-react";
 
 import AppScreen from "../../components/AppScreen";
 import { TradeTrigger } from "../../components/TradeModal";
-import { getRankingPageData } from "../../lib/adapters/ranking";
+import { useLanguage } from "../../components/LanguageProvider";
+import { readAuthSession } from "../../lib/adapters/auth";
+import {
+  createInitialRankingPageData,
+  getRankingPageData,
+} from "../../lib/adapters/ranking";
+import { byLanguage } from "../../lib/locale";
 
 function TrendChart({
   chartLabels,
@@ -60,17 +66,144 @@ function TrendChart({
 }
 
 export default function RankingPage() {
-  const { status, starParticipants } = getRankingPageData();
+  const { language } = useLanguage();
+  const copy = byLanguage(language, {
+    "zh-Hant": {
+      loading: "星級參賽者資料載入中...",
+      empty: "暫無星級參賽者資料",
+      loadError: "星級參賽者資料載入失敗",
+      retry: "重新載入",
+      back: "返回",
+      title: "星級參賽者",
+      advice: "今日投資建議",
+      marketValue: "證券參考市值",
+      availableCash: "可投資餘額",
+      totalAssets: "資產總值",
+      updatedAt: "資料更新",
+      holdingQty: "持股量",
+      tradableQty: "持股 (可交易)",
+      pnl: "賺蝕*",
+      referenceValue: "參考市值",
+      footerUpdatedAt: "更新於",
+      currencyUnit: "港幣",
+    },
+    "zh-Hans": {
+      loading: "星级参赛者资料加载中...",
+      empty: "暂无星级参赛者资料",
+      loadError: "星级参赛者资料加载失败",
+      retry: "重新载入",
+      back: "返回",
+      title: "星级参赛者",
+      advice: "今日投资建议",
+      marketValue: "证券参考市值",
+      availableCash: "可投资余额",
+      totalAssets: "资产总值",
+      updatedAt: "资料更新",
+      holdingQty: "持股量",
+      tradableQty: "持股 (可交易)",
+      pnl: "赚蚀*",
+      referenceValue: "参考市值",
+      footerUpdatedAt: "更新于",
+      currencyUnit: "港币",
+    },
+    en: {
+      loading: "Loading star trader data...",
+      empty: "No star trader data yet",
+      loadError: "Failed to load star trader data",
+      retry: "Retry",
+      back: "Back",
+      title: "Star Traders",
+      advice: "Today's Advice",
+      marketValue: "Securities Value",
+      availableCash: "Available Cash",
+      totalAssets: "Total Assets",
+      updatedAt: "Updated",
+      holdingQty: "Holding Qty",
+      tradableQty: "Tradable Qty",
+      pnl: "P/L*",
+      referenceValue: "Reference Value",
+      footerUpdatedAt: "Updated",
+      currencyUnit: "HKD",
+    },
+  });
+
+  const [rankingData, setRankingData] = useState(() =>
+    createInitialRankingPageData(language)
+  );
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadData() {
+      setRankingData(createInitialRankingPageData(language));
+      const session = readAuthSession();
+      const data = await getRankingPageData(language, session?.userId);
+      if (!cancelled) {
+        setRankingData(data);
+      }
+    }
+
+    void loadData();
+    return () => {
+      cancelled = true;
+    };
+  }, [language, refreshKey]);
+
+  const { status, starParticipants } = rankingData;
   const { tabs, items, currencyLabel, disclaimer, footerUpdatedAt } = starParticipants;
-  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>(tabs[0]);
-  const activeItem = useMemo(() => items[activeTab], [activeTab, items]);
-  const { featured, holdings, holdingsTitle } = activeItem;
+
+  useEffect(() => {
+    if (!tabs.length) {
+      setActiveTab("");
+      return;
+    }
+    setActiveTab((prev) => (prev && tabs.includes(prev) ? prev : tabs[0]));
+  }, [tabs]);
+
+  const activeItem = useMemo(() => {
+    if (!activeTab) {
+      return null;
+    }
+    return items[activeTab] ?? null;
+  }, [activeTab, items]);
+  const featured = activeItem?.featured;
+  const holdings = activeItem?.holdings ?? [];
+  const holdingsTitle = activeItem?.holdingsTitle ?? "";
+
+  if (status === "loading") {
+    return (
+      <AppScreen>
+        <div className="app-panel rounded-[28px] px-5 py-10 text-center">
+          <p className="text-page font-black text-[#2a1b12]">{copy.loading}</p>
+        </div>
+      </AppScreen>
+    );
+  }
 
   if (status === "error") {
     return (
       <AppScreen>
         <div className="app-panel rounded-[28px] px-5 py-10 text-center">
-          <p className="text-page font-black text-[#2a1b12]">星级参赛者资料加载失败</p>
+          <p className="text-page font-black text-[#2a1b12]">{copy.loadError}</p>
+          <button
+            type="button"
+            onClick={() => setRefreshKey((key) => key + 1)}
+            className="mt-4 rounded-full bg-[var(--app-orange)] px-4 py-2 text-body font-black text-white"
+          >
+            {copy.retry}
+          </button>
+        </div>
+      </AppScreen>
+    );
+  }
+
+  if (status === "empty" || !featured) {
+    return (
+      <AppScreen>
+        <div className="app-panel rounded-[28px] px-5 py-10 text-center">
+          <p className="text-page font-black text-[#2a1b12]">{copy.empty}</p>
         </div>
       </AppScreen>
     );
@@ -85,11 +218,11 @@ export default function RankingPage() {
               <Link
                 href="/"
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-white/14 active:bg-white/20"
-                aria-label="返回"
+                aria-label={copy.back}
               >
                 <ChevronLeft className="h-5 w-5" />
               </Link>
-              <h1 className="text-page truncate font-black leading-none">星级参赛者</h1>
+              <h1 className="text-page truncate font-black leading-none">{copy.title}</h1>
             </div>
 
             <div className="flex shrink-0 gap-2">
@@ -129,22 +262,22 @@ export default function RankingPage() {
             </div>
 
             <div className="relative mt-4">
-              <p className="text-[14px] font-bold text-[#b09a83]">今日投资建议</p>
+              <p className="text-[14px] font-bold text-[#b09a83]">{copy.advice}</p>
               <p className="text-body mt-1 font-semibold leading-[1.4] text-[#4d3a29]">
                 {featured.intro}
               </p>
             </div>
 
             <div className="relative mt-5 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 rounded-[18px] bg-[#fff9f2] px-3 py-3">
-              <span className="text-[15px] font-bold text-[#8d7964]">证券参考市值</span>
+              <span className="text-[15px] font-bold text-[#8d7964]">{copy.marketValue}</span>
               <span className="text-[16px] font-black text-[#22160d]">
-                {featured.marketValue} 港币
+                {featured.marketValue} {copy.currencyUnit}
               </span>
-              <span className="text-[15px] font-bold text-[#8d7964]">可投资余额</span>
-              <span className="text-[16px] font-black text-[#22160d]">{featured.cash} 港币</span>
-              <span className="text-[15px] font-black text-[var(--app-orange-dark)]">资产总值</span>
+              <span className="text-[15px] font-bold text-[#8d7964]">{copy.availableCash}</span>
+              <span className="text-[16px] font-black text-[#22160d]">{featured.cash} {copy.currencyUnit}</span>
+              <span className="text-[15px] font-black text-[var(--app-orange-dark)]">{copy.totalAssets}</span>
               <span className="text-[16px] font-black text-[var(--app-orange-dark)]">
-                {featured.totalAssets} 港币
+                {featured.totalAssets} {copy.currencyUnit}
               </span>
             </div>
 
@@ -154,7 +287,7 @@ export default function RankingPage() {
             />
 
             <p className="text-helper relative mt-3 font-medium text-[#b39a80]">
-              资料更新 {featured.updatedAt}
+              {copy.updatedAt} {featured.updatedAt}
             </p>
           </div>
         </div>
@@ -183,11 +316,11 @@ export default function RankingPage() {
                     <p className="text-[24px] font-black leading-none text-[#23170e]">{item.symbol}</p>
 
                     <div className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[15px]">
-                      <span className="font-bold text-[#9f8a74]">持股量</span>
+                      <span className="font-bold text-[#9f8a74]">{copy.holdingQty}</span>
                       <span className="font-black text-[#2b1d13]">{item.quantity}</span>
-                      <span className="font-bold text-[#9f8a74]">持股 (可交易)</span>
+                      <span className="font-bold text-[#9f8a74]">{copy.tradableQty}</span>
                       <span className="font-black text-[#2b1d13]">{item.available}</span>
-                      <span className="font-bold text-[#9f8a74]">赚蚀*</span>
+                      <span className="font-bold text-[#9f8a74]">{copy.pnl}</span>
                       <span
                         className={`font-black ${
                           item.positive ? "text-[#2eb568]" : "text-[#ef655d]"
@@ -217,7 +350,7 @@ export default function RankingPage() {
                     </div>
 
                     <div className="mt-4 text-right">
-                      <p className="text-[14px] font-bold text-[#9f8a74]">参考市值</p>
+                      <p className="text-[14px] font-bold text-[#9f8a74]">{copy.referenceValue}</p>
                       <p className="mt-1 text-[16px] font-black leading-none text-[#2b1d13]">
                         {item.referenceValue}
                       </p>
@@ -228,7 +361,7 @@ export default function RankingPage() {
             </div>
           </div>
 
-          <p className="text-helper mt-3 font-medium text-[#b39a80]">更新于 {footerUpdatedAt}</p>
+          <p className="text-helper mt-3 font-medium text-[#b39a80]">{copy.footerUpdatedAt} {footerUpdatedAt}</p>
           <p className="text-helper mt-2 leading-[1.5] text-[#9f8a74]">{disclaimer}</p>
         </div>
       </div>

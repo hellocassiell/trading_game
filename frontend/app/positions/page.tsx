@@ -9,8 +9,52 @@ import SubTabs from "../../components/SubTabs";
 import SurfaceCard from "../../components/SurfaceCard";
 import { tradingApiClient } from "../../lib/api";
 import { mapPositionsToCards } from "../../lib/adapters/portfolio";
+import { byLanguage } from "../../lib/locale";
+import { useLanguage } from "../../components/LanguageProvider";
 
 export default function PositionsPage() {
+  const { language } = useLanguage();
+  const copy = byLanguage(language, {
+    "zh-Hant": {
+      title: "交易狀況",
+      all: "全部",
+      profit: "盈利中",
+      filled: "已成交",
+      loadError: "讀取持倉失敗",
+      retry: "重試",
+      empty: "暫無持倉",
+      emptyHint: "完成交易後可在此查看持倉",
+      price: "現價",
+      quantity: "數量",
+      avgPrice: "均價",
+    },
+    "zh-Hans": {
+      title: "交易状况",
+      all: "全部",
+      profit: "盈利中",
+      filled: "已成交",
+      loadError: "读取持仓失败",
+      retry: "重试",
+      empty: "暂无持仓",
+      emptyHint: "完成交易后可在此查看持仓",
+      price: "现价",
+      quantity: "数量",
+      avgPrice: "均价",
+    },
+    en: {
+      title: "Trading Status",
+      all: "All",
+      profit: "Profitable",
+      filled: "Filled",
+      loadError: "Failed to load positions",
+      retry: "Retry",
+      empty: "No positions yet",
+      emptyHint: "Positions appear here after trading",
+      price: "Price",
+      quantity: "Qty",
+      avgPrice: "Avg Price",
+    },
+  });
   const [positions, setPositions] = useState<Awaited<ReturnType<typeof tradingApiClient.getPositions>>>([]);
   const [loadState, setLoadState] = useState<"loading" | "success" | "empty" | "error">("loading");
 
@@ -44,14 +88,14 @@ export default function PositionsPage() {
 
   return (
     <AppScreen>
-      <ScreenTopBar title="交易状况" showBack backHref="/profile" />
+      <ScreenTopBar title={copy.title} showBack backHref="/profile" />
 
       <SurfaceCard>
         <SubTabs
           tabs={[
-            { label: "全部", active: true },
-            { label: "盈利中" },
-            { label: "已成交" },
+            { label: copy.all, active: true },
+            { label: copy.profit },
+            { label: copy.filled },
           ]}
         />
 
@@ -63,19 +107,19 @@ export default function PositionsPage() {
           </div>
         ) : loadState === "error" ? (
           <div className="mt-4 text-center">
-            <p className="text-body font-semibold text-[#8f7a66]">读取持仓失败</p>
+            <p className="text-body font-semibold text-[#8f7a66]">{copy.loadError}</p>
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="btn-primary mt-3 px-4"
             >
-              重试
+              {copy.retry}
             </button>
           </div>
         ) : loadState === "empty" ? (
           <div className="mt-4 text-center">
-            <p className="text-body font-semibold text-[#8f7a66]">暂无持仓</p>
-            <p className="text-helper mt-1 text-[#b39a80]">完成交易后可在此查看持仓</p>
+            <p className="text-body font-semibold text-[#8f7a66]">{copy.empty}</p>
+            <p className="text-helper mt-1 text-[#b39a80]">{copy.emptyHint}</p>
           </div>
         ) : (
           <div className="mt-2 space-y-1.5">
@@ -95,19 +139,19 @@ export default function PositionsPage() {
                   </div>
                   <div className="text-label mt-1.5 grid grid-cols-3 gap-3 text-[#9a8b7a]">
                     <div>
-                      <p>现价</p>
+                      <p>{copy.price}</p>
                       <p className="text-helper font-semibold text-[#5f6c80]">
                         {item.currentPrice}
                       </p>
                     </div>
                     <div>
-                      <p>数量</p>
+                      <p>{copy.quantity}</p>
                       <p className="text-helper font-semibold text-[#5f6c80]">
                         {item.quantity}
                       </p>
                     </div>
                     <div>
-                      <p>均价</p>
+                      <p>{copy.avgPrice}</p>
                       <p className="text-helper font-semibold text-[#5f6c80]">
                         {item.averagePrice}
                       </p>

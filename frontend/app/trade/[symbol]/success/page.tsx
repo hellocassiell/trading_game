@@ -9,6 +9,7 @@ export default async function TradeSuccessPage({
   params,
 }: TradeSuccessPageProps) {
   const { symbol } = await params;
+  const product = await getTradeProductViewModel(symbol);
 
-  return <TradeSuccessPreview product={getTradeProductViewModel(symbol)} />;
+  return <TradeSuccessPreview product={product} />;
 }

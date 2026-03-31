@@ -5,7 +5,6 @@ import {
   startTransition,
   useDeferredValue,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -27,6 +26,8 @@ import {
 } from "../lib/adapters/trade";
 import { tradingApiClient } from "../lib/api";
 import type { TradeOrderType, TradeSide } from "../lib/api/types";
+import { useLanguage } from "./LanguageProvider";
+import { byLanguage } from "../lib/locale";
 
 type TradeProduct = {
   symbol: string;
@@ -48,6 +49,7 @@ type TradeProduct = {
 
 type TradeTicketCardProps = {
   product?: TradeProduct;
+  symbol?: string;
   onClose?: () => void;
   variant?: "trade" | "order";
   startWithSearch?: boolean;
@@ -70,29 +72,53 @@ function parseNumericValue(value: string | undefined) {
 }
 
 function formatNumber(value: number) {
-  return value.toLocaleString(undefined, {
+  return value.toLocaleString("en-US", {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   });
 }
 
-function getCurrencyUnit() {
-  return "港币";
+function isHongKongTradingHours(now: Date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Hong_Kong",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(now).map((part) => [part.type, part.value])
+  );
+  const weekday = parts.weekday;
+  const hour = Number(parts.hour);
+  const minute = Number(parts.minute);
+
+  if (!weekday || Number.isNaN(hour) || Number.isNaN(minute)) {
+    return false;
+  }
+
+  if (weekday === "Sat" || weekday === "Sun") {
+    return false;
+  }
+
+  const minutes = hour * 60 + minute;
+  return (minutes >= 570 && minutes <= 720) || (minutes >= 780 && minutes <= 960);
 }
 
 function formatOrderStatusText(
-  status: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED"
+  status: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED",
+  copy: { pendingStatus: string; filledStatus: string; canceledStatus: string; rejectedStatus: string }
 ) {
   if (status === "PENDING" || status === "PARTIAL_FILLED") {
-    return "排队中";
+    return copy.pendingStatus;
   }
   if (status === "FILLED") {
-    return "已成交";
+    return copy.filledStatus;
   }
   if (status === "CANCELED") {
-    return "已取消";
+    return copy.canceledStatus;
   }
-  return "已拒绝";
+  return copy.rejectedStatus;
 }
 
 function DialogCard({
@@ -133,25 +159,44 @@ function SearchPanel({
   onQueryChange,
   onClose,
   onPick,
+  copy,
 }: {
   query: string;
   onQueryChange: (value: string) => void;
   onClose?: () => void;
   onPick: (symbol: string) => void;
+  copy: {
+    searchStock: string;
+    closeSearch: string;
+    searchPlaceholder: string;
+    clear: string;
+    searchResults: string;
+    recentHot: string;
+    items: string;
+    noResult: string;
+    noResultHint: string;
+  };
 }) {
   const deferredQuery = useDeferredValue(query);
-  const normalizedQuery = deferredQuery.trim().toUpperCase();
-  const mergedResults = useMemo<SearchResult[]>(() => {
-    return getTradeSearchItems();
-  }, []);
+  const normalizedQuery = deferredQuery.trim();
+  const [visibleResults, setVisibleResults] = useState<SearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
-  const visibleResults = normalizedQuery
-    ? mergedResults.filter((item) => {
-        const product = getTradeProductViewModel(item.symbol);
-        const searchable = [item.symbol, item.name, product.company].join(" ").toUpperCase();
-        return searchable.includes(normalizedQuery);
-      })
-    : mergedResults;
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSearchResults() {
+      setSearchLoading(true);
+      const items = await getTradeSearchItems(normalizedQuery);
+      if (!cancelled) {
+        setVisibleResults(items);
+        setSearchLoading(false);
+      }
+    }
+    void loadSearchResults();
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedQuery]);
 
   return (
     <div className="overflow-hidden rounded-t-[30px] bg-white shadow-[0_-20px_44px_rgba(171,86,0,0.18)]">
@@ -160,13 +205,13 @@ function SearchPanel({
       </div>
 
       <div className="flex items-center justify-between px-4 pb-3 pt-2">
-        <div className="text-title font-black tracking-[0.04em] text-[#4b3a28]">搜索股票</div>
+        <div className="text-title font-black tracking-[0.04em] text-[#4b3a28]">{copy.searchStock}</div>
         {onClose ? (
           <button
             type="button"
             onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-full text-[#2f251d]"
-            aria-label="关闭搜索"
+            aria-label={copy.closeSearch}
           >
             <X className="h-5 w-5" />
           </button>
@@ -181,7 +226,7 @@ function SearchPanel({
           <input
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="输入股票编号名称或代号"
+            placeholder={copy.searchPlaceholder}
             className="text-body min-w-0 flex-1 bg-transparent font-semibold text-[#4e4338] outline-none placeholder:text-[#c1ab91]"
           />
           {query ? (
@@ -190,16 +235,18 @@ function SearchPanel({
               onClick={() => onQueryChange("")}
               className="text-helper font-semibold text-[var(--app-orange-dark)]"
             >
-              清除
+              {copy.clear}
             </button>
           ) : null}
         </div>
 
         <div className="mt-4 flex items-center justify-between">
           <p className="text-helper font-black text-[#8f795f]">
-            {normalizedQuery ? "搜索结果" : "最近 / 热门"}
+            {normalizedQuery ? copy.searchResults : copy.recentHot}
           </p>
-          <p className="text-label text-[#bfa58a]">{visibleResults.length} 项</p>
+          <p className="text-label text-[#bfa58a]">
+            {searchLoading ? "..." : visibleResults.length} {copy.items}
+          </p>
         </div>
 
         <div className="mt-2 overflow-hidden rounded-[18px] border border-[#f2e0cd] bg-white">
@@ -223,7 +270,7 @@ function SearchPanel({
                     ) : null}
                   </div>
                   <p className="text-helper mt-1 truncate text-[#8f7f6f]">
-                    {getTradeProductViewModel(item.symbol).company || item.name}
+                    {item.name}
                   </p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-[#c8aa85]" />
@@ -231,8 +278,8 @@ function SearchPanel({
             ))
           ) : (
             <div className="px-4 py-8 text-center">
-              <p className="text-body font-black text-[#6b5a48]">找不到匹配股票</p>
-              <p className="text-helper mt-2 text-[#b39981]">可尝试输入代码、名称或拼音首字母</p>
+              <p className="text-body font-black text-[#6b5a48]">{copy.noResult}</p>
+              <p className="text-helper mt-2 text-[#b39981]">{copy.noResultHint}</p>
             </div>
           )}
         </div>
@@ -243,6 +290,7 @@ function SearchPanel({
 
 export default function TradeTicketCard({
   product,
+  symbol,
   onClose,
   variant = "trade",
   startWithSearch = false,
@@ -250,6 +298,216 @@ export default function TradeTicketCard({
   orderStatus,
 }: TradeTicketCardProps) {
   const router = useRouter();
+  const { language } = useLanguage();
+  const copy = byLanguage(language, {
+    "zh-Hant": {
+      currencyUnit: "港幣",
+      pendingStatus: "排隊中",
+      filledStatus: "已成交",
+      canceledStatus: "已取消",
+      rejectedStatus: "已拒絕",
+      chooseTradableStock: "請選擇可交易港股",
+      minPrice: (isBuy: boolean, min: number) => `${isBuy ? "買入" : "賣出"}價不得低於 HK$${min.toFixed(2)}`,
+      lotSizeError: (size: number) => `交易股數必須為每手 ${size} 股的整數倍`,
+      validityToday: "交易指示有效至本日收市",
+      validityNextDay: "交易指示將於下一交易日執行",
+      invalidTradeData: "請輸入有效的交易資料",
+      orderIdMissingForAmend: "訂單編號缺失，暫無法改單",
+      orderIdMissingForCancel: "訂單編號缺失，暫無法取消",
+      amendSuccessEvent: "改單成功，原訂單已撤單",
+      submitSuccessEvent: "下單成功",
+      cancelSuccessEvent: "取消訂單成功",
+      close: "關閉",
+      competitionTitle: "智財港股投資大賽2026",
+      sponsoredBy: "由 Citi 贊助",
+      weeklyReminder: "要維持有效的參賽資格，請記得每周最少成功交易4次，加油!",
+      tradesLeft: "今日尚餘交易次數",
+      availableCash: "可動用投資金額",
+      tradableStock: "可買賣股票",
+      amendOrder: "更改訂單",
+      quoteTimePrefix: "港股即時報價",
+      openQuote: "跳至AASTOCKS查看報價",
+      buy: "買入",
+      sell: "賣出",
+      quote: "報價",
+      minTick: "最小變動 0.1",
+      quantity: "股數",
+      perLot: (size: number) => `每手 ${size} 股`,
+      estimatedTotal: "預計總額 (含手續費)",
+      submitting: "提交中...",
+      submitAmend: "提交修改",
+      submit: "提交",
+      tradeNote: "(此為比賽交易)",
+      tradeDetail: "交易詳情",
+      orderIdPrefix: "訂單編號",
+      orderStatusPrefix: "當前狀態",
+      sideLabel: "買入 / 賣出",
+      symbolLabel: "代號",
+      orderPrice: "落盤價",
+      fee: "手續費",
+      estimatedTotalSimple: "預計總額",
+      cancelOrder: "取消訂單",
+      confirmCancelTitle: "確認取消訂單",
+      confirmCancelDesc: "取消後不可恢復，是否繼續？",
+      back: "返回",
+      canceling: "取消中...",
+      confirmCancel: "確認取消",
+      confirmInstruction: "確認指示",
+      cancel: "取消",
+      confirm: "確定",
+      submitSuccess: "提交成功",
+      viewTradeStatus: "查看交易狀況",
+      tradeAgain: "再次交易",
+      backHome: "返回主頁",
+      searchStock: "搜尋股票",
+      closeSearch: "關閉搜尋",
+      searchPlaceholder: "輸入股票編號名稱或代號",
+      clear: "清除",
+      searchResults: "搜尋結果",
+      recentHot: "最近 / 熱門",
+      items: "項",
+      noResult: "找不到匹配股票",
+      noResultHint: "可嘗試輸入代碼、名稱或拼音首字母",
+    },
+    "zh-Hans": {
+      currencyUnit: "港币",
+      pendingStatus: "排队中",
+      filledStatus: "已成交",
+      canceledStatus: "已取消",
+      rejectedStatus: "已拒绝",
+      chooseTradableStock: "请选择可交易港股",
+      minPrice: (isBuy: boolean, min: number) => `${isBuy ? "买入" : "卖出"}价不得低于 HK$${min.toFixed(2)}`,
+      lotSizeError: (size: number) => `交易股数必须为每手 ${size} 股的整数倍`,
+      validityToday: "交易指示有效至本日收市",
+      validityNextDay: "交易指示将于下一交易日执行",
+      invalidTradeData: "请输入有效的交易资料",
+      orderIdMissingForAmend: "订单编号缺失，暂无法改单",
+      orderIdMissingForCancel: "订单编号缺失，暂无法取消",
+      amendSuccessEvent: "改单成功，原订单已撤单",
+      submitSuccessEvent: "下单成功",
+      cancelSuccessEvent: "取消订单成功",
+      close: "关闭",
+      competitionTitle: "智财港股投资大赛2026",
+      sponsoredBy: "由 Citi 赞助",
+      weeklyReminder: "要维持有效的参赛资格，请记得每周最少成功交易4次，加油!",
+      tradesLeft: "今日尚余交易次数",
+      availableCash: "可动用投资金额",
+      tradableStock: "可买卖股票",
+      amendOrder: "更改订单",
+      quoteTimePrefix: "港股即时报价",
+      openQuote: "跳至AASTOCKS查看报价",
+      buy: "买入",
+      sell: "卖出",
+      quote: "报价",
+      minTick: "最小变动 0.1",
+      quantity: "股数",
+      perLot: (size: number) => `每手 ${size} 股`,
+      estimatedTotal: "预计总额 (含手续费)",
+      submitting: "提交中...",
+      submitAmend: "提交修改",
+      submit: "提交",
+      tradeNote: "(此为比赛交易)",
+      tradeDetail: "交易详情",
+      orderIdPrefix: "订单编号",
+      orderStatusPrefix: "当前状态",
+      sideLabel: "买入 / 卖出",
+      symbolLabel: "代号",
+      orderPrice: "落盘价",
+      fee: "手续费",
+      estimatedTotalSimple: "预计总额",
+      cancelOrder: "取消订单",
+      confirmCancelTitle: "确认取消订单",
+      confirmCancelDesc: "取消后不可恢复，是否继续？",
+      back: "返回",
+      canceling: "取消中...",
+      confirmCancel: "确认取消",
+      confirmInstruction: "确认指示",
+      cancel: "取消",
+      confirm: "确定",
+      submitSuccess: "提交成功",
+      viewTradeStatus: "查看交易状况",
+      tradeAgain: "再次交易",
+      backHome: "返回主页",
+      searchStock: "搜索股票",
+      closeSearch: "关闭搜索",
+      searchPlaceholder: "输入股票编号名称或代号",
+      clear: "清除",
+      searchResults: "搜索结果",
+      recentHot: "最近 / 热门",
+      items: "项",
+      noResult: "找不到匹配股票",
+      noResultHint: "可尝试输入代码、名称或拼音首字母",
+    },
+    en: {
+      currencyUnit: "HKD",
+      pendingStatus: "Pending",
+      filledStatus: "Filled",
+      canceledStatus: "Canceled",
+      rejectedStatus: "Rejected",
+      chooseTradableStock: "Please choose a tradable HK stock",
+      minPrice: (isBuy: boolean, min: number) => `${isBuy ? "Buy" : "Sell"} price must be >= HK$${min.toFixed(2)}`,
+      lotSizeError: (size: number) => `Quantity must be a multiple of lot size ${size}`,
+      validityToday: "Instruction valid until market close today",
+      validityNextDay: "Instruction will execute on next trading day",
+      invalidTradeData: "Please enter valid trade data",
+      orderIdMissingForAmend: "Order ID missing. Cannot amend now.",
+      orderIdMissingForCancel: "Order ID missing. Cannot cancel now.",
+      amendSuccessEvent: "Order amended and original order canceled",
+      submitSuccessEvent: "Order submitted",
+      cancelSuccessEvent: "Order canceled",
+      close: "Close",
+      competitionTitle: "HK Stock Trading Game 2026",
+      sponsoredBy: "Sponsored by Citi",
+      weeklyReminder: "To keep an active entry, complete at least 4 successful trades every week.",
+      tradesLeft: "Trades left today",
+      availableCash: "Available cash",
+      tradableStock: "Tradable stock",
+      amendOrder: "Amend order",
+      quoteTimePrefix: "Realtime HK quote",
+      openQuote: "Open quote on AASTOCKS",
+      buy: "Buy",
+      sell: "Sell",
+      quote: "Quote",
+      minTick: "Min tick 0.1",
+      quantity: "Quantity",
+      perLot: (size: number) => `Lot size ${size}`,
+      estimatedTotal: "Estimated total (incl. fee)",
+      submitting: "Submitting...",
+      submitAmend: "Submit amend",
+      submit: "Submit",
+      tradeNote: "(Competition trade)",
+      tradeDetail: "Trade details",
+      orderIdPrefix: "Order ID",
+      orderStatusPrefix: "Status",
+      sideLabel: "Buy / Sell",
+      symbolLabel: "Symbol",
+      orderPrice: "Order price",
+      fee: "Fee",
+      estimatedTotalSimple: "Estimated total",
+      cancelOrder: "Cancel order",
+      confirmCancelTitle: "Confirm cancellation",
+      confirmCancelDesc: "This action cannot be undone. Continue?",
+      back: "Back",
+      canceling: "Canceling...",
+      confirmCancel: "Confirm cancel",
+      confirmInstruction: "Confirm instruction",
+      cancel: "Cancel",
+      confirm: "Confirm",
+      submitSuccess: "Submitted",
+      viewTradeStatus: "View trade status",
+      tradeAgain: "Trade again",
+      backHome: "Back home",
+      searchStock: "Search stock",
+      closeSearch: "Close search",
+      searchPlaceholder: "Enter symbol or stock name",
+      clear: "Clear",
+      searchResults: "Results",
+      recentHot: "Recent / Hot",
+      items: "items",
+      noResult: "No matching stock found",
+      noResultHint: "Try stock code, name, or ticker keywords",
+    },
+  });
   const [activeProduct, setActiveProduct] = useState<TradeProduct | undefined>(product);
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [price, setPrice] = useState(parseNumericValue(product?.defaultPrice ?? product?.price));
@@ -264,6 +522,8 @@ export default function TradeTicketCard({
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [submitPending, setSubmitPending] = useState(false);
   const [cancelPending, setCancelPending] = useState(false);
+  const [productLoading, setProductLoading] = useState(false);
+  const [isTradingHours, setIsTradingHours] = useState(false);
   const [currentOrderStatus, setCurrentOrderStatus] = useState<
     "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED" | undefined
   >(orderStatus);
@@ -288,8 +548,34 @@ export default function TradeTicketCard({
     setLastOrderId(null);
   }, [product, startWithSearch, variant, orderStatus]);
 
+  useEffect(() => {
+    setIsTradingHours(isHongKongTradingHours());
+  }, []);
+
+  useEffect(() => {
+    if (product || !symbol) {
+      return;
+    }
+    const targetSymbol = symbol;
+    let cancelled = false;
+    async function loadProduct() {
+      setProductLoading(true);
+      const nextProduct = await getTradeProductViewModel(targetSymbol);
+      if (!cancelled) {
+        setActiveProduct(nextProduct);
+        setPrice(parseNumericValue(nextProduct.defaultPrice ?? nextProduct.price));
+        setQuantity(parseNumericValue(nextProduct.defaultQuantity ?? nextProduct.lotSize ?? "100"));
+        setProductLoading(false);
+      }
+    }
+    void loadProduct();
+    return () => {
+      cancelled = true;
+    };
+  }, [product, symbol]);
+
   const currentProduct = activeProduct;
-  const currencyUnit = getCurrencyUnit();
+  const currencyUnit = copy.currencyUnit;
   const lotSize = Math.max(1, parseNumericValue(currentProduct?.lotSize ?? "10"));
   const displayQuantity = Math.max(lotSize, quantity || lotSize);
   const displayPrice = price || parseNumericValue(currentProduct?.price ?? "0");
@@ -312,11 +598,11 @@ export default function TradeTicketCard({
   const orderType: TradeOrderType = "LIMIT";
   const minPrice = side === "buy" ? 0.05 : 0.01;
   const validationError = !currentProduct
-    ? "请选择可交易港股"
+    ? copy.chooseTradableStock
     : displayPrice < minPrice
-      ? `${side === "buy" ? "买入" : "卖出"}价不得低于 HK$${minPrice.toFixed(2)}`
+      ? copy.minPrice(side === "buy", minPrice)
       : displayQuantity % lotSize !== 0
-        ? `交易股数必须为每手 ${lotSize} 股的整数倍`
+        ? copy.lotSizeError(lotSize)
         : null;
   const canSubmit =
     !!currentProduct &&
@@ -324,20 +610,9 @@ export default function TradeTicketCard({
     displayQuantity > 0 &&
     !validationError &&
     !submitPending;
-  const isTradingHours = (() => {
-    const now = new Date();
-    const day = now.getDay();
-    const minutes = now.getHours() * 60 + now.getMinutes();
-
-    if (day === 0 || day === 6) {
-      return false;
-    }
-
-    return (minutes >= 570 && minutes <= 720) || (minutes >= 780 && minutes <= 960);
-  })();
   const validityText = isTradingHours
-    ? "交易指示有效至本日收市"
-    : "交易指示将于下一交易日执行";
+    ? copy.validityToday
+    : copy.validityNextDay;
   const isDetailOnly = variant === "order" && showDetails;
   const canCancelOrder =
     !!orderId &&
@@ -357,9 +632,8 @@ export default function TradeTicketCard({
     setShowSearch(true);
   };
 
-  const handleSearchPick = (symbol: string) => {
-    const nextProduct = getTradeProductViewModel(symbol);
-
+  const handleSearchPick = async (stockCode: string) => {
+    const nextProduct = await getTradeProductViewModel(stockCode);
     setActiveProduct(nextProduct);
     setPrice(parseNumericValue(nextProduct.defaultPrice ?? nextProduct.price));
     setQuantity(parseNumericValue(nextProduct.defaultQuantity ?? nextProduct.lotSize ?? "10"));
@@ -371,7 +645,7 @@ export default function TradeTicketCard({
 
   const handleSubmit = () => {
     if (!canSubmit) {
-      setSubmitError(validationError ?? "请输入有效的交易资料");
+      setSubmitError(validationError ?? copy.invalidTradeData);
       return;
     }
 
@@ -382,7 +656,7 @@ export default function TradeTicketCard({
   const handleConfirm = async () => {
     if (!currentProduct || validationError) {
       setShowConfirm(false);
-      setSubmitError(validationError ?? "请选择可交易港股");
+      setSubmitError(validationError ?? copy.chooseTradableStock);
       return;
     }
 
@@ -393,7 +667,7 @@ export default function TradeTicketCard({
       if (!orderId) {
         setSubmitPending(false);
         setShowConfirm(false);
-        setSubmitError("订单编号缺失，暂无法改单");
+        setSubmitError(copy.orderIdMissingForAmend);
         return;
       }
       const amendResult = await tradingApiClient.amendOrder(orderId, displayPrice, displayQuantity);
@@ -413,7 +687,7 @@ export default function TradeTicketCard({
             detail: {
               type: "amend_success",
               orderId: amendResult.orderId,
-              message: "改单成功，原订单已撤单",
+              message: copy.amendSuccessEvent,
             },
           })
         );
@@ -446,7 +720,7 @@ export default function TradeTicketCard({
           detail: {
             type: "submit_success",
             orderId: result.orderId,
-            message: "下单成功",
+            message: copy.submitSuccessEvent,
           },
         })
       );
@@ -465,7 +739,7 @@ export default function TradeTicketCard({
 
   const handleCancelOrder = async () => {
     if (!orderId) {
-      setCancelError("订单编号缺失，暂无法取消");
+      setCancelError(copy.orderIdMissingForCancel);
       return;
     }
     setCancelPending(true);
@@ -485,7 +759,7 @@ export default function TradeTicketCard({
           detail: {
             type: "cancel_success",
             orderId,
-            message: "取消订单成功",
+            message: copy.cancelSuccessEvent,
           },
         })
       );
@@ -501,11 +775,29 @@ export default function TradeTicketCard({
         onQueryChange={setQuery}
         onClose={currentProduct ? () => setShowSearch(false) : onClose}
         onPick={handleSearchPick}
+        copy={{
+          searchStock: copy.searchStock,
+          closeSearch: copy.closeSearch,
+          searchPlaceholder: copy.searchPlaceholder,
+          clear: copy.clear,
+          searchResults: copy.searchResults,
+          recentHot: copy.recentHot,
+          items: copy.items,
+          noResult: copy.noResult,
+          noResultHint: copy.noResultHint,
+        }}
       />
     );
   }
 
   if (!currentProduct) {
+    if (productLoading) {
+      return (
+        <div className="overflow-hidden rounded-t-[30px] bg-white px-5 py-10 text-center shadow-[0_-20px_44px_rgba(171,86,0,0.18)]">
+          <p className="text-body font-semibold text-[#8f7f6f]">Loading quote...</p>
+        </div>
+      );
+    }
     return null;
   }
 
@@ -529,7 +821,7 @@ export default function TradeTicketCard({
                   type="button"
                   onClick={onClose}
                   className="flex h-7 w-7 items-center justify-center rounded-full text-[#2f251d]"
-                  aria-label="关闭"
+                  aria-label={copy.close}
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -541,24 +833,24 @@ export default function TradeTicketCard({
                 <span className="flex h-5 w-5 items-center justify-center rounded-[6px] bg-[#fff1de] text-[var(--app-orange-dark)]">
                   <Trophy className="h-3.5 w-3.5" />
                 </span>
-                <span>智财港股投资大赛2026</span>
+                <span>{copy.competitionTitle}</span>
               </div>
-              <span className="font-semibold text-[#7b6450]">由 Citi 赞助</span>
+              <span className="font-semibold text-[#7b6450]">{copy.sponsoredBy}</span>
             </div>
 
             <div className="text-helper bg-[#5e6670] px-3.5 py-2 leading-relaxed text-white">
-              要维持有效的参赛资格，请记得每周最少成功交易4次，加油!
+              {copy.weeklyReminder}
             </div>
           </header>
 
           <main className="bg-white">
             <section className="text-helper grid grid-cols-2 border-b border-[#efe5d8] px-3.5 py-2.5">
               <div>
-                <p className="text-[#907a63]">今日尚余交易次数</p>
+                <p className="text-[#907a63]">{copy.tradesLeft}</p>
                 <p className="text-title mt-1 font-bold text-[#25282d]">{tradesLeft}</p>
               </div>
               <div className="text-right">
-                <p className="text-[#907a63]">可动用投资金额</p>
+                <p className="text-[#907a63]">{copy.availableCash}</p>
                 <p className="text-title mt-1 font-bold text-[#25282d]">{availableCash}</p>
               </div>
             </section>
@@ -570,7 +862,7 @@ export default function TradeTicketCard({
                 className="flex w-full items-center justify-between rounded-[16px] border border-[#f3dcc0] bg-[#fffaf3] px-3 py-2.5 text-left active:bg-[#fff3e3]"
               >
                 <div className="text-helper flex items-center gap-1 font-semibold text-[#5d4b3d]">
-                  <span>可买卖股票</span>
+                  <span>{copy.tradableStock}</span>
                   <Info className="h-3.5 w-3.5 text-[#c59b6e]" />
                 </div>
                 <div className="text-body flex items-center gap-2 font-semibold text-[#32271e]">
@@ -582,7 +874,7 @@ export default function TradeTicketCard({
               <div className="relative mt-3 overflow-hidden rounded-[20px] bg-[radial-gradient(circle_at_center,rgba(255,193,126,0.14),transparent_58%)] py-4 text-center">
                 {variant === "order" ? (
                   <p className="text-helper mb-1 font-semibold tracking-[0.06em] text-[var(--app-orange-dark)]">
-                    更改订单
+                    {copy.amendOrder}
                   </p>
                 ) : null}
                 <p className="text-page px-4 font-black text-[#1f2328]">{currentProduct.company}</p>
@@ -594,7 +886,7 @@ export default function TradeTicketCard({
                   </span>
                 </div>
                 <p className="text-label mt-1 text-[#baa28b]">
-                  港股即时报价 {currentProduct.quoteUpdatedAt ?? "2021/04/21 11:00 HKT"}
+                  {copy.quoteTimePrefix} {currentProduct.quoteUpdatedAt ?? "2021/04/21 11:00 HKT"}
                 </p>
                 <button
                   type="button"
@@ -606,7 +898,7 @@ export default function TradeTicketCard({
                   }}
                   className="text-helper mt-2 inline-flex items-center gap-1 font-semibold text-[var(--app-orange-dark)]"
                 >
-                  跳至AASTOCKS查看报价
+                  {copy.openQuote}
                   <ChevronRight className="h-3 w-3" />
                 </button>
               </div>
@@ -623,7 +915,7 @@ export default function TradeTicketCard({
                       : "border-[#ddd3c8] bg-white text-[#c2b8ae]"
                   }`}
                 >
-                  买入
+                  {copy.buy}
                 </button>
                 <button
                   type="button"
@@ -634,14 +926,14 @@ export default function TradeTicketCard({
                       : "border-[#ddd3c8] bg-white text-[#c2b8ae]"
                   }`}
                 >
-                  卖出
+                  {copy.sell}
                 </button>
               </div>
             </section>
 
             <section className="px-3.5 py-1">
               <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 border-b border-[#f1e7da] py-3">
-                <span className="text-helper text-[#907a63]">报价({currencyUnit})</span>
+                <span className="text-helper text-[#907a63]">{copy.quote}({currencyUnit})</span>
                 <button
                   type="button"
                   onClick={() => adjustPrice(-0.1)}
@@ -659,11 +951,11 @@ export default function TradeTicketCard({
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
-                <span className="text-label text-right text-[#bc9871]">最小变动 0.1</span>
+                <span className="text-label text-right text-[#bc9871]">{copy.minTick}</span>
               </div>
 
               <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 py-3">
-                <span className="text-helper text-[#907a63]">股数</span>
+                <span className="text-helper text-[#907a63]">{copy.quantity}</span>
                 <button
                   type="button"
                   onClick={() => adjustQuantity(-1)}
@@ -681,14 +973,14 @@ export default function TradeTicketCard({
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </button>
-                <span className="text-label text-right text-[#bc9871]">每手 {lotSize} 股</span>
+                <span className="text-label text-right text-[#bc9871]">{copy.perLot(lotSize)}</span>
               </div>
             </section>
           </main>
 
           <footer className="border-t border-[#efe5d8] bg-white px-3.5 pb-[max(env(safe-area-inset-bottom),12px)] pt-3">
             <div className="flex items-end justify-between">
-              <span className="text-helper font-semibold text-[#6a594b]">预计总额 (含手续费)</span>
+              <span className="text-helper font-semibold text-[#6a594b]">{copy.estimatedTotal}</span>
               <div className="text-right">
                 <p className="text-title font-black text-[#23262b]">{totalText}</p>
                 <p className="text-label mt-0.5 text-[#b5a08a]">{feeText}</p>
@@ -705,7 +997,7 @@ export default function TradeTicketCard({
                   : "bg-[#ecd5bd] text-white"
               }`}
             >
-              {submitPending ? "提交中..." : variant === "order" ? "提交修改" : "提交"}
+              {submitPending ? copy.submitting : variant === "order" ? copy.submitAmend : copy.submit}
             </button>
             <p className="text-label pt-1.5 text-center text-[#b5a08a]">{validityText}</p>
             {submitError ? (
@@ -717,7 +1009,7 @@ export default function TradeTicketCard({
                 {validationError}
               </p>
             ) : null}
-            <p className="text-label pt-1.5 text-center text-[#b5a08a]">(此为比赛交易)</p>
+            <p className="text-label pt-1.5 text-center text-[#b5a08a]">{copy.tradeNote}</p>
           </footer>
         </div>
       ) : null}
@@ -734,37 +1026,37 @@ export default function TradeTicketCard({
               setShowDetails(false);
             }}
             className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-[#7e6a55]"
-            aria-label="关闭"
+            aria-label={copy.close}
           >
             <X className="h-4.5 w-4.5" />
           </button>
-          <h3 className="text-page text-center font-black text-[#27231f]">交易详情</h3>
+          <h3 className="text-page text-center font-black text-[#27231f]">{copy.tradeDetail}</h3>
           {orderId ? (
             <p className="text-helper mt-1 text-center text-[#9f8669]">
-              订单编号 {orderId}
+              {copy.orderIdPrefix} {orderId}
             </p>
           ) : null}
           {currentOrderStatus ? (
             <p className="text-helper mt-1 text-center text-[#9f8669]">
-              当前状态 {formatOrderStatusText(currentOrderStatus)}
+              {copy.orderStatusPrefix} {formatOrderStatusText(currentOrderStatus, copy)}
             </p>
           ) : null}
           <div className="mt-5 space-y-3">
-            <SummaryRow label="买入 / 卖出" value={side === "buy" ? "买入" : "卖出"} />
-            <SummaryRow label="代号" value={currentProduct.symbol} />
-            <SummaryRow label="股数" value={String(displayQuantity)} />
-            <SummaryRow label="落盘价" value={currentPriceText} />
-            <SummaryRow label="手续费" value={feeText} />
-            <SummaryRow label="预计总额" value={totalText} />
+            <SummaryRow label={copy.sideLabel} value={side === "buy" ? copy.buy : copy.sell} />
+            <SummaryRow label={copy.symbolLabel} value={currentProduct.symbol} />
+            <SummaryRow label={copy.quantity} value={String(displayQuantity)} />
+            <SummaryRow label={copy.orderPrice} value={currentPriceText} />
+            <SummaryRow label={copy.fee} value={feeText} />
+            <SummaryRow label={copy.estimatedTotalSimple} value={totalText} />
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setShowDetails(false)}
-              className="text-body flex h-11 items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
-            >
-              更改订单
+            className="text-body flex h-11 items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
+          >
+              {copy.amendOrder}
             </button>
             <button
               type="button"
@@ -781,7 +1073,7 @@ export default function TradeTicketCard({
                   : "bg-[#d8d0c7]"
               }`}
             >
-              取消订单
+              {copy.cancelOrder}
             </button>
           </div>
           {cancelError ? (
@@ -794,9 +1086,9 @@ export default function TradeTicketCard({
 
       {showCancelConfirm ? (
         <DialogCard>
-          <h3 className="text-page text-center font-black text-[#27231f]">确认取消订单</h3>
+          <h3 className="text-page text-center font-black text-[#27231f]">{copy.confirmCancelTitle}</h3>
           <p className="text-helper mt-3 text-center text-[#9f8669]">
-            取消后不可恢复，是否继续？
+            {copy.confirmCancelDesc}
           </p>
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button
@@ -804,7 +1096,7 @@ export default function TradeTicketCard({
               onClick={() => setShowCancelConfirm(false)}
               className="text-body flex h-11 items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
             >
-              返回
+              {copy.back}
             </button>
             <button
               type="button"
@@ -812,7 +1104,7 @@ export default function TradeTicketCard({
               onClick={handleCancelOrder}
               className="text-body flex h-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] font-black text-white"
             >
-              {cancelPending ? "取消中..." : "确认取消"}
+              {cancelPending ? copy.canceling : copy.confirmCancel}
             </button>
           </div>
         </DialogCard>
@@ -820,14 +1112,14 @@ export default function TradeTicketCard({
 
       {showConfirm ? (
         <DialogCard>
-          <h3 className="text-page text-center font-black text-[#27231f]">确认指示</h3>
+          <h3 className="text-page text-center font-black text-[#27231f]">{copy.confirmInstruction}</h3>
           <div className="mt-5 space-y-3">
-            <SummaryRow label="买入 / 卖出" value={side === "buy" ? "买入" : "卖出"} />
-            <SummaryRow label="代号" value={currentProduct.symbol} />
-            <SummaryRow label="股数" value={String(displayQuantity)} />
-            <SummaryRow label="落盘价" value={currentPriceText} />
-            <SummaryRow label="手续费" value={feeText} />
-            <SummaryRow label="预计总额" value={totalText} />
+            <SummaryRow label={copy.sideLabel} value={side === "buy" ? copy.buy : copy.sell} />
+            <SummaryRow label={copy.symbolLabel} value={currentProduct.symbol} />
+            <SummaryRow label={copy.quantity} value={String(displayQuantity)} />
+            <SummaryRow label={copy.orderPrice} value={currentPriceText} />
+            <SummaryRow label={copy.fee} value={feeText} />
+            <SummaryRow label={copy.estimatedTotalSimple} value={totalText} />
           </div>
 
           <p className="text-label mt-5 text-center text-[#ad957e]">{validityText}</p>
@@ -838,7 +1130,7 @@ export default function TradeTicketCard({
               onClick={() => setShowConfirm(false)}
               className="text-body flex h-11 items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
             >
-              取消
+              {copy.cancel}
             </button>
             <button
               type="button"
@@ -846,7 +1138,7 @@ export default function TradeTicketCard({
               disabled={submitPending}
               className="text-body flex h-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] font-black text-white"
             >
-              {submitPending ? "提交中..." : "确定"}
+              {submitPending ? copy.submitting : copy.confirm}
             </button>
           </div>
         </DialogCard>
@@ -859,10 +1151,10 @@ export default function TradeTicketCard({
               <Check className="h-5 w-5" />
             </div>
           </div>
-          <h3 className="mt-3 text-center text-[18px] font-black text-[#27231f]">提交成功</h3>
+          <h3 className="mt-3 text-center text-[18px] font-black text-[#27231f]">{copy.submitSuccess}</h3>
           {lastOrderId ? (
             <p className="text-helper mt-2 text-center font-semibold text-[#9c7f61]">
-              订单编号 {lastOrderId}
+              {copy.orderIdPrefix} {lastOrderId}
             </p>
           ) : null}
 
@@ -878,14 +1170,14 @@ export default function TradeTicketCard({
               }}
               className="text-body flex h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] font-black text-white"
             >
-              查看交易状况
+              {copy.viewTradeStatus}
             </button>
             <button
               type="button"
               onClick={() => setShowSuccess(false)}
               className="text-body flex h-11 w-full items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
             >
-              再次交易
+              {copy.tradeAgain}
             </button>
             <button
               type="button"
@@ -898,14 +1190,14 @@ export default function TradeTicketCard({
               }}
               className="text-body flex h-11 w-full items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
             >
-              跳至AASTOCKS查看报价
+              {copy.openQuote}
             </button>
             <button
               type="button"
               onClick={closeAll}
               className="text-body flex h-11 w-full items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
             >
-              返回主页
+              {copy.backHome}
             </button>
           </div>
         </DialogCard>

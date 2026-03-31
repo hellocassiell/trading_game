@@ -1,4 +1,5 @@
 import type { ActiveOrder, TradeHistoryItem } from "../api";
+import { byLanguage, getPreferredLanguage } from "../locale";
 
 export type StatusFilter = "all" | "pending" | "done";
 
@@ -50,10 +51,17 @@ export function mapOrderToRecordCard(item: ActiveOrder | TradeHistoryItem) {
 }
 
 export function groupTradeHistoryByDate(history: TradeHistoryItem[]) {
+  const language = getPreferredLanguage();
+  const unknownDate = byLanguage(language, {
+    "zh-Hant": "未知日期",
+    "zh-Hans": "未知日期",
+    en: "Unknown Date",
+  });
+
   const groupedRecords = history.reduce<Record<string, ReturnType<typeof mapOrderToRecordCard>[]>>(
     (accumulator, item) => {
       const mappedItem = mapOrderToRecordCard(item);
-      const dateLabel = mappedItem.time.split(" ")[0] || "未知日期";
+      const dateLabel = mappedItem.time.split(" ")[0] || unknownDate;
       accumulator[dateLabel] ??= [];
       accumulator[dateLabel].push(mappedItem);
       return accumulator;

@@ -8,13 +8,19 @@ import com.simtrade.backend.dto.TradeOrderPreviewResult;
 import com.simtrade.backend.dto.TradeOrderSubmitResult;
 import com.simtrade.backend.entity.Order;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface OrderService extends IService<Order> {
     String placeOrder(OrderRequest request);
 
     TradeOrderSubmitResult placeOrderV1(String userId, TradeOrderCreateRequest request);
+
+    default TradeOrderSubmitResult placeOrderV1(String userId, TradeOrderCreateRequest request, String idempotencyKey) {
+        return placeOrderV1(userId, request);
+    }
 
     TradeOrderPreviewResult previewOrderV1(String userId, TradeOrderCreateRequest request);
 
@@ -31,4 +37,10 @@ public interface OrderService extends IService<Order> {
     Order amendOrderV1(String userId, String orderId, TradeOrderAmendRequest request);
 
     String getOrderType(String orderId);
+
+    List<Order> listOpenOrdersByStock(String stockCode);
+
+    Order applyMatchExecution(String orderId, BigDecimal executionPrice, int matchedQuantity);
+
+    int closeExpiredLimitOrders(LocalDateTime triggerTime);
 }

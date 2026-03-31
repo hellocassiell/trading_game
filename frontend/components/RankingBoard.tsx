@@ -1,13 +1,74 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Crown, UserRound } from "lucide-react";
 
 import SurfaceCard from "./SurfaceCard";
-import { rankingList } from "../lib/mock-data";
+import { tradingApiClient } from "../lib/api";
+import { byLanguage } from "../lib/locale";
+import { useLanguage } from "./LanguageProvider";
+
+type RankingRow = {
+  rank: string;
+  name: string;
+  amount: string;
+  gain: string;
+  current?: boolean;
+};
+
+function formatCurrency(value: number) {
+  return `HK$${Number(value ?? 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatPercent(value: number) {
+  const safe = Number(value ?? 0);
+  const sign = safe > 0 ? "+" : "";
+  return `${sign}${safe.toFixed(2)}%`;
+}
 
 export default function RankingBoard() {
+  const { language } = useLanguage();
+  const [rankingRows, setRankingRows] = useState<RankingRow[]>([]);
+  const copy = byLanguage(language, {
+    "zh-Hant": { totalAssets: "總資產" },
+    "zh-Hans": { totalAssets: "总资产" },
+    en: { totalAssets: "Total Assets" },
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRankings() {
+      try {
+        const payload = await tradingApiClient.getRankingsLeaderboard(1, 6);
+        const rows = (payload.items ?? []).map((item) => ({
+          rank: String(item.rank),
+          name: item.nickname,
+          amount: formatCurrency(item.totalAssets),
+          gain: formatPercent(item.changePercent),
+          current: Boolean(item.isCurrentUser),
+        }));
+        if (!cancelled) {
+          setRankingRows(rows);
+        }
+      } catch {
+        if (!cancelled) {
+          setRankingRows([]);
+        }
+      }
+    }
+    void loadRankings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <SurfaceCard className="space-y-2 px-3 py-3">
-      {rankingList.map((item, index) => (
+      {rankingRows.map((item, index) => (
         <Link
           key={`${item.rank}-${item.name}`}
           href={"current" in item && item.current ? "/profile" : "/ranking"}
@@ -43,7 +104,7 @@ export default function RankingBoard() {
                 {item.name}
               </p>
               <p className="text-[12px] text-[var(--app-text-muted)]">
-                总资产 {item.amount}
+                {copy.totalAssets} {item.amount}
               </p>
             </div>
           </div>

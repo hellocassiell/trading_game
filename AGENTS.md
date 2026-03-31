@@ -90,11 +90,16 @@
 
 - 目录：`frontend/`
 - 技术栈：Next.js App Router、TypeScript、Tailwind CSS 4、React 19
-- 当前状态：以前端高保真原型为主，主要使用 `frontend/lib/mock-data.ts` 提供展示数据
+- 当前状态：以前端高保真原型为主，页面数据已优先通过 `frontend/lib/adapters/` + `frontend/lib/api/` 调后端 `/api/v1` 接口
+- 当前多语：已支持 `zh-Hant` / `zh-Hans` / `en`，默认 `zh-Hant`；语言切换入口位于 `/more`，接口请求统一透传 `X-Lang` + `lang`
 - 当前补充：已建立初步前端数据收口层，读取与提交逻辑优先放在 `frontend/lib/adapters/` 与 `frontend/lib/api/`，页面层不要再直接散写接口请求
+- 当前补充：头像资源采用本地静态文件方案，统一放在 `frontend/public/avatars/`；前后端默认返回/渲染本地路径，避免外网依赖
+- 当前补充：`/auth/invite` 已支持真实头像上传（`multipart/form-data`），上传成功后保存后端返回的 `avatarId`，并在首页/个人页通过 adapter 映射渲染
+- 当前补充：当前推荐演示部署路径为 `Vercel + 本地后端 HTTPS 穿透`；前端部署到 Vercel 时，`NEXT_PUBLIC_API_BASE_URL` 必须配置为后端的绝对 `https://` 穿透地址
 - 已有页面：登录、主页、个人、记录、更多、交易链路、排行榜、市场榜单等
-- 当前事实：暂无前端自动化测试文件；交易提交已可通过前端 adapter 对接现有后端下单接口，其余展示页仍以 adapter 映射 mock 数据为主
+- 当前事实：暂无前端自动化测试文件；交易链路（搜索/报价/下单/改单/撤单）已通过前端 adapter 对接现有后端接口；`/trade/[symbol]/detail` 已接入实时报价与买卖盘（先拉快照，再通过 SSE 订阅增量）
 - 当前登录前实现约束：`/auth/invite` 是注册选择头像与昵称页，不是邀请好友页；`注册中途离开确认` 与 `账户被封锁` 按设计稿必须做成当前页弹窗，不再落独立路由页；输入场景统一使用设备原生键盘
+- 当前登录前实现约束补充：注册昵称最长 8 个字符，头像与昵称确认后需提交 `/api/v1/auth/profile` 并以后端回读结果作为最终展示来源
 - 当前登录页补充：`/auth` 需包含手机号输入、验证码输入、右侧获取验证码按钮、60 秒倒计时与重新获取逻辑，再进入选择头像页
 
 ### 后端
@@ -102,12 +107,26 @@
 - 目录：`backend/`
 - 技术栈：Spring Boot 2.7、Java 17、MyBatis-Plus、MySQL、Redis、RabbitMQ
 - 当前状态：已有订单提交、撮合、手续费计算、统一返回结构、全局异常处理、手续费单元测试
+- 当前新增：已补 `AccountLedgerService` 账本层，撮合后会更新可用/冻结/在途资金与持仓（含限价挂单冻结、撤单释放、T+2 结算入账）；订单详情/历史视图已可返回 `settlementDate`、`settlementStatus`、`estimatedNetCashFlow`
+- 当前新增：AOB 行情链路已补 protobuf 解码与订阅发布能力（`aob.subscription.*`），`MarketDataConsumer` 支持 protobuf/JSON 双格式消费并统一进入实时推送+撮合
+- 当前新增：下单去重已升级为 Redis 优先（`trade:dedup:submit:*`，1500ms 窗口）并保留本地内存兜底，不改接口契约
+- 当前新增：下单接口支持 `X-Idempotency-Key`（24h 语义幂等）；同 key 同请求返回同一 `orderId`，同 key 不同请求返回 400
+- 当前新增：撮合已支持按订单簿逐级消耗量（逐笔部分成交）+ 价格优先/时间优先；无可用订单簿流动性时回退按盘价撮合
+- 当前新增：已引入 `TradingCalendarService`（周末+可配置 `trading.hk-holidays`）统一交易日与 T+2 计算
+- 当前新增：订单主链路（下单/改单/撤单/查询）已改为 DB 优先，不再保留本地订单 in-memory fallback
+- 当前多语：`/api/v1` 控制器统一解析 `X-Lang`/`lang`/`Accept-Language`，核心接口返回 `lang`，错误消息由全局异常处理按语言本地化
+- 当前多语补充：`/api/v1/trade/orders`、`/preview`、`/cancel` 返回体同时包含 `language` 与 `lang` 字段，兼容旧前端并对齐新约定
 - 当前事实：实现是可运行雏形，不是完整生产版
-- 当前补充：账户持仓接口已改为按 `X-User-Id` 对应用户的已成交订单聚合返回；注册流程支持提交昵称与头像到后端用户资料存储
+- 当前补充：账户持仓接口已改为按 `X-User-Id` 对应用户的已成交订单聚合返回；注册流程支持提交昵称与头像到后端用户资料存储（`t_user_profile` 持久化，服务层 DB 优先 + 内存兜底）
+- 当前补充：排行榜、参赛人数、星级参赛者及相关统计口径已统一改为“完成头像 + 昵称”的已注册参赛者；未交易但已完成注册的用户也必须进入榜单，默认总资产 `1,000,000 HKD`、涨跌幅 `0.00%`
+- 当前补充：前端请求用户态 `/api/v1` 接口时不得再注入 demo `userId`；仅在本地已登录会话存在时透传真实 `X-User-Id`
+- 当前补充：头像资料存储新增白名单校验（`a1~a6`）+ 上传文件路径校验；上传文件落本地目录 `uploads/avatars`，由后端 `/api/v1/auth/avatar-files/{filename}` 提供读取
+- 当前补充：已新增演示环境部署骨架：`backend/Dockerfile`、`backend/src/main/resources/application-prod.yml`、`deploy/docker-compose.demo.yml`、`deploy/nginx/demo.conf`、`deploy/env/backend.demo.env.example`、`deploy/sql/init-demo.sql`、`deploy/scripts/deploy-demo.sh`、`deploy/scripts/smoke-test.sh`
+- 当前补充：已新增 `frontend/Dockerfile`，用于后续服务器同机部署备选方案；当前主演示路径仍以 `Vercel + 本地后端 HTTPS 穿透` 为准
 - 当前差异：
   - PRD 内部 API 倾向 `/api/v1/...`
   - 当前代码已同时存在旧接口 `/api/orders/place` 与第一批 `/api/v1/...` 只读/交易接口
-  - 当前后端有部分 mock / 简化逻辑，例如撮合后 T+2 直接 `plusDays(2)`，并非完整营业日日历
+  - 当前后端仍有部分 mock / 简化逻辑，例如撮合价格来源仍依赖行情按盘价/盘口深度，不含完整集合竞价与撮合引擎微结构；营业日日历已接入节假日配置，但半日市与临时停市规则尚未覆盖
   - 当前后端已补本地联调用全局 CORS 配置，默认放行 `http://localhost:*` 与 `http://127.0.0.1:*` 访问 `/api/**`
 - 当前本地环境事实（2026-03-28）：
   - 已通过 Homebrew 安装 `openjdk@17`、`maven`、`mysql`、`redis`、`rabbitmq`
@@ -129,7 +148,7 @@
 - 前端文案和展示口径统一使用港股语境，例如：`港股持仓`、`今日10大成交港股`、`参赛者20大港股持仓`、`00700 腾讯控股`、`0388 香港交易所`、`2800 盈富基金`、`HK$ / 港币`。
 - 港股交易界面必须显式体现港股特征：每手股数、按手交易、港币报价、港股代码/简称、交易时段、T+2 结算、涨跌颜色和文案都按港股比赛规则呈现。
 - 页面组织优先使用 App Router 路由，通用 UI 抽到 `frontend/components/`。
-- 展示型页面的数据优先集中在 `frontend/lib/mock-data.ts` 或未来的 typed adapter 中，避免页面里复制同一份硬编码数据。
+- 展示型页面的数据优先走 typed adapter + API（`frontend/lib/adapters/`、`frontend/lib/api/`），避免页面里复制同一份硬编码数据。
 - 页面读取数据时优先经由 `frontend/lib/adapters/` 返回页面所需 view model；对接真实接口时优先经由 `frontend/lib/api/` 发起请求，不要在页面或纯展示组件里直接写 fetch。
 - 新增交互时必须补齐 4 种状态：loading、empty、error、success。
 - 表单和交易输入要做显式校验，错误提示文案要可读，不要只靠浏览器原生报错。
@@ -151,10 +170,12 @@
 - 如果要把现有接口逐步对齐 PRD 的 `/api/v1/...` 结构，优先保持兼容，不要无说明地破坏现有调用路径。
 - 2026-03-28 当前已补齐的第一批 `/api/v1` 接口包括：
   - `GET /api/v1/account/profile`
+  - `GET /api/v1/account/asset-trend`
   - `GET /api/v1/account/positions`
   - `GET /api/v1/home/overview`
   - `GET /api/v1/leaderboard/star-traders`
   - `GET /api/v1/leaderboard/top-holdings`
+  - `GET /api/v1/leaderboard/top-loser-holdings`
   - `GET /api/v1/leaderboard/top-turnover`
   - `GET /api/v1/leaderboard/rankings`
   - `GET /api/v1/trade/orders/active`
@@ -165,11 +186,17 @@
   - `POST /api/v1/trade/orders/{orderId}/amend`
   - `GET /api/v1/trade/search`
   - `GET /api/v1/trade/quote/{stockCode}`
+  - `GET /api/v1/trade/quote/stream?stockCode=...`（SSE 实时推送报价与买卖盘）
+  - `POST /api/v1/trade/quote/debug-push`（本地联调用：注入一条行情并触发撮合；支持 `forceMatch=true` 在非交易时段强制撮合回归；若时间戳落后于最新行情，返回 `accepted=false` 且不触发撮合）
   - `POST /api/v1/trade/orders/preview`
   - 同时保留兼容路径 `POST /api/orders/place`
   - 登录联调新增：`POST /api/v1/auth/send-code`（60s 重发间隔，5 分钟有效期）、`POST /api/v1/auth/verify-code`（校验 6 位验证码，返回 userId/token）
+  - 登录联调新增：`GET /api/v1/auth/session`（可选 `X-User-Id`，返回 `loggedIn`、`profileCompleted`、`accountStatus` 与 `lang`）
+  - 登录联调约束：`userId` 必须为全局唯一且对同一手机号稳定复用，禁止再使用“手机号后四位”之类会撞号的派生规则
+  - 登录联调约束：`GET /api/v1/account/*`、`GET /api/v1/home/overview`、`GET /api/v1/leaderboard/star-traders`、`GET /api/v1/leaderboard/rankings`、`POST /api/v1/trade/orders*` 等用户态接口必须显式携带真实 `X-User-Id`，后端不再提供 `u_10001` 之类 demo 默认值
   - 登录联调新增：`POST /api/v1/auth/profile`（需 `X-User-Id`，提交昵称与头像）
-  - 登录联调新增：`POST /api/v1/auth/send-code`、`POST /api/v1/auth/verify-code`
+  - 登录联调新增：`POST /api/v1/auth/avatar-upload`（需 `X-User-Id`，`multipart/form-data` 上传头像文件，支持 PNG/JPG/WEBP/GIF，限制 2MB）
+  - 登录联调新增：`GET /api/v1/auth/avatar-files/{filename}`（读取后端本地上传头像）
 
 ## 8. 报错与稳定性要求
 
@@ -200,6 +227,7 @@
 - 命令：`cd frontend && npm run build`
 - 2026-03-28 实测结果：通过
 - 作用：可同时验证 Next.js 编译、路由构建、基础类型检查
+- 演示部署补充：使用 Vercel 时必须配置 `NEXT_PUBLIC_API_BASE_URL=https://<your-https-tunnel-domain>` 与 `NEXT_PUBLIC_DEMO_USER_ID`
 
 ### 前端 lint 现状
 
@@ -212,10 +240,14 @@
 
 - 命令：`export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home && export PATH="$JAVA_HOME/bin:$PATH" && cd backend && mvn test`
 - 代码内已存在测试：
+  - `backend/src/test/java/com/simtrade/backend/service/AccountLedgerServiceTest.java`
+  - `backend/src/test/java/com/simtrade/backend/service/UserProfileServiceTest.java`
   - `backend/src/test/java/com/simtrade/backend/service/FeeCalculatorTest.java`
   - `backend/src/test/java/com/simtrade/backend/service/OrderServiceImplV1Test.java`
+  - `backend/src/test/java/com/simtrade/backend/service/MatchingServiceImplTest.java`
   - `backend/src/test/java/com/simtrade/backend/controller/V1ControllerTest.java`
-- 2026-03-28 当前环境结果：已实测通过
+- 注意：`V1ControllerTest`（`@WebMvcTest`）已对账务持久化相关 Mapper 使用 `@MockBean`，避免测试上下文误拉起 MyBatis `sqlSessionFactory` 依赖。
+- 2026-03-31 当前环境结果：已实测通过（105 tests）
 - 结论：`mvn test` 已可作为后端默认回归入口，但必须显式切到 JDK 17
 
 ### 后端本地启动
@@ -223,7 +255,12 @@
 - 推荐命令：`cd backend && ./run-local.sh`
 - 数据库初始化：`cd backend && ./init-local-db.sh`
 - 说明文档：`backend/README.md`
+- 演示部署入口：`docs/demo-deployment.md`
+- 演示部署主路径：本地启动后端 `cd backend && ./run-local.sh`，再通过 HTTPS 穿透暴露 `http://127.0.0.1:8080`
+- 演示部署前端变量：`NEXT_PUBLIC_API_BASE_URL=https://<your-https-tunnel-domain>`、`NEXT_PUBLIC_DEMO_USER_ID=u_10001`
+- 演示部署备选：如需改成服务器同机部署，再执行 `chmod +x deploy/scripts/deploy-demo.sh deploy/scripts/smoke-test.sh && ./deploy/scripts/deploy-demo.sh`
 - 当前本地跨域：后端已对 `/api/**` 开启 localhost/127.0.0.1 的开发态 CORS 放行，前端默认 `http://localhost:3000` 可直接联调 `http://localhost:8080`
+- 当前跨域补充：CORS 配置已改为读取 `app.cors.allowed-origin-patterns`；若使用 HTTPS 穿透并需要浏览器直连后端，请确认允许对应 `https://<your-frontend-domain>` 或 Vercel 预览域
 - 注意：当前 shell 如设置了 `http_proxy` / `https_proxy`，本地调接口时请使用 `curl --noproxy '*' ...`，避免本地回环请求被代理拦截成 502
 
 ### 改动后的执行原则
@@ -251,6 +288,10 @@
 - 逐步把 PRD 中的交易规则从文档落到单元测试和集成测试
 - 逐步消除“PRD 接口约定”和“当前代码路径/字段”的偏差
 - 如果前端开始对接真实接口，先建立 typed API client，不要让页面直接散写 fetch 逻辑
+- 已新增文档：
+  - `docs/进度巡检与排期-2026-03-30.md`
+  - `docs/交易逻辑细化说明-2026-03-30.md`
+  - `docs/跑通验证与未完成清单-2026-03-31.md`
 
 ## 11. 维护约定
 

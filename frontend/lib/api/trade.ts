@@ -1,4 +1,4 @@
-import { getApiBaseUrl, getAuthToken, getDemoUserId } from "./config";
+import { getApiBaseUrl, getAuthToken, getStoredUserId } from "./config";
 import type {
   AccountAssets,
   ActiveOrder,
@@ -7,9 +7,19 @@ import type {
   TradeOrderDraft,
   TradeHistoryItem,
   TradeCancelResult,
+  TradeQuoteSnapshot,
+  TradeQuoteStreamPayload,
   TradeOrderStatus,
   TradeSubmitResult,
+  HomeOverviewPayload,
+  StarTradersLeaderboardPayload,
+  TopHoldingsLeaderboardPayload,
+  TopLoserHoldingsLeaderboardPayload,
+  TopTurnoverLeaderboardPayload,
+  RankingsLeaderboardPayload,
+  TradeSearchPayload,
 } from "./types";
+import { byLanguage, getPreferredLanguage } from "../locale";
 
 type BackendTradeOrderRequest = {
   stockCode: string;
@@ -46,11 +56,16 @@ async function fetchBackendResult<T>(
   userId?: string
 ): Promise<T> {
   const authToken = getAuthToken();
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const language = getPreferredLanguage();
+  const url = new URL(path, getApiBaseUrl());
+  url.searchParams.set("lang", language);
+  const resolvedUserId = userId ?? getStoredUserId();
+  const response = await fetch(url.toString(), {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      "X-User-Id": userId ?? getDemoUserId(),
+      "X-Lang": language,
+      ...(resolvedUserId ? { "X-User-Id": resolvedUserId } : {}),
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...init?.headers,
     },
@@ -58,9 +73,14 @@ async function fetchBackendResult<T>(
   });
 
   const result = (await response.json()) as BackendResult<T>;
+  const errorFallback = byLanguage(language, {
+    "zh-Hant": "請求失敗，請稍後重試",
+    "zh-Hans": "请求失败，请稍后重试",
+    en: "Request failed. Please try again later.",
+  });
 
   if (!response.ok || result.code !== 200) {
-    throw new Error(result.msg || "请求失败，请稍后重试");
+    throw new Error(result.msg || errorFallback);
   }
 
   return result.data;
@@ -69,6 +89,7 @@ async function fetchBackendResult<T>(
 export async function placeTradeOrder(
   input: TradeOrderDraft
 ): Promise<TradeSubmitResult> {
+  const language = getPreferredLanguage();
   try {
     const result = await fetchBackendResult<{ orderId: string; message: string }>(
       "/api/v1/trade/orders",
@@ -90,14 +111,41 @@ export async function placeTradeOrder(
       message:
         error instanceof Error
           ? error.message
-          : "网络异常，暂时无法提交交易",
+          : byLanguage(language, {
+              "zh-Hant": "網絡異常，暫時無法提交交易",
+              "zh-Hans": "网络异常，暂时无法提交交易",
+              en: "Network error. Unable to submit order now.",
+            }),
     };
   }
 }
 
 export const tradingApiClient = {
   placeTradeOrder,
+  async getHomeOverview(userId?: string): Promise<HomeOverviewPayload> {
+    return fetchBackendResult<HomeOverviewPayload>("/api/v1/home/overview", undefined, userId);
+  },
+  async getStarTraders(userId?: string): Promise<StarTradersLeaderboardPayload> {
+    return fetchBackendResult<StarTradersLeaderboardPayload>("/api/v1/leaderboard/star-traders", undefined, userId);
+  },
+  async getTopHoldingsLeaderboard(): Promise<TopHoldingsLeaderboardPayload> {
+    return fetchBackendResult<TopHoldingsLeaderboardPayload>("/api/v1/leaderboard/top-holdings");
+  },
+  async getTopTurnoverLeaderboard(): Promise<TopTurnoverLeaderboardPayload> {
+    return fetchBackendResult<TopTurnoverLeaderboardPayload>("/api/v1/leaderboard/top-turnover");
+  },
+  async getTopLoserHoldingsLeaderboard(): Promise<TopLoserHoldingsLeaderboardPayload> {
+    return fetchBackendResult<TopLoserHoldingsLeaderboardPayload>("/api/v1/leaderboard/top-loser-holdings");
+  },
+  async getRankingsLeaderboard(page = 1, pageSize = 20, userId?: string): Promise<RankingsLeaderboardPayload> {
+    return fetchBackendResult<RankingsLeaderboardPayload>(
+      `/api/v1/leaderboard/rankings?page=${page}&pageSize=${pageSize}`,
+      undefined,
+      userId
+    );
+  },
   async cancelOrder(orderId: string, userId?: string): Promise<TradeCancelResult> {
+    const language = getPreferredLanguage();
     try {
       const data = await fetchBackendResult<{
         orderId: string;
@@ -119,7 +167,11 @@ export const tradingApiClient = {
         message:
           error instanceof Error
             ? error.message
-            : "网络异常，暂时无法取消订单",
+            : byLanguage(language, {
+                "zh-Hant": "網絡異常，暫時無法取消訂單",
+                "zh-Hans": "网络异常，暂时无法取消订单",
+                en: "Network error. Unable to cancel order now.",
+              }),
       };
     }
   },
@@ -132,6 +184,7 @@ export const tradingApiClient = {
     | { ok: true; orderId: string; status: TradeOrderStatus }
     | { ok: false; message: string }
   > {
+    const language = getPreferredLanguage();
     try {
       const data = await fetchBackendResult<{
         orderId: string;
@@ -156,7 +209,11 @@ export const tradingApiClient = {
         message:
           error instanceof Error
             ? error.message
-            : "网络异常，暂时无法修改订单",
+            : byLanguage(language, {
+                "zh-Hant": "網絡異常，暫時無法修改訂單",
+                "zh-Hans": "网络异常，暂时无法修改订单",
+                en: "Network error. Unable to amend order now.",
+              }),
       };
     }
   },
@@ -193,5 +250,47 @@ export const tradingApiClient = {
     }>("/api/v1/trade/orders/history?page=1&pageSize=50", undefined, userId);
 
     return data.items;
+  },
+  async getTradeQuote(stockCode: string): Promise<TradeQuoteSnapshot> {
+    const normalized = normalizeStockCodeForBackend(stockCode);
+    return fetchBackendResult<TradeQuoteSnapshot>(`/api/v1/trade/quote/${normalized}`);
+  },
+  async searchTradeTargets(keyword: string): Promise<TradeSearchPayload> {
+    const safeKeyword = keyword.trim();
+    return fetchBackendResult<TradeSearchPayload>(
+      `/api/v1/trade/search?keyword=${encodeURIComponent(safeKeyword)}`
+    );
+  },
+  subscribeTradeQuote(
+    stockCode: string,
+    handlers: {
+      onMessage: (payload: TradeQuoteStreamPayload) => void;
+      onError?: () => void;
+    }
+  ) {
+    const language = getPreferredLanguage();
+    const url = new URL("/api/v1/trade/quote/stream", getApiBaseUrl());
+    url.searchParams.set("stockCode", normalizeStockCodeForBackend(stockCode));
+    url.searchParams.set("lang", language);
+
+    const eventSource = new EventSource(url.toString());
+    const onMessage = (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data) as TradeQuoteStreamPayload;
+        handlers.onMessage(payload);
+      } catch {
+        // ignore malformed payload
+      }
+    };
+
+    eventSource.addEventListener("quote", onMessage as EventListener);
+    eventSource.onerror = () => {
+      handlers.onError?.();
+    };
+
+    return () => {
+      eventSource.removeEventListener("quote", onMessage as EventListener);
+      eventSource.close();
+    };
   },
 };

@@ -7,14 +7,42 @@ import {
   clearAuthDraft,
   createAuthSession,
   getAuthEntryViewModel,
+  getLeaveConfirmViewModel,
   requestAuthCode,
   verifyAuthCodeAndCreateSession,
 } from "../../lib/adapters/auth";
+import { useLanguage } from "../../components/LanguageProvider";
+import { byLanguage } from "../../lib/locale";
 import { tradingApiClient } from "../../lib/api";
 
 export default function AuthPage() {
   const router = useRouter();
+  const { language } = useLanguage();
   const viewModel = getAuthEntryViewModel();
+  const leaveConfirmViewModel = getLeaveConfirmViewModel();
+  const copy = byLanguage(language, {
+    "zh-Hant": {
+      close: "關閉",
+      sending: "發送中...",
+      verifying: "驗證中...",
+      sendCodeFailed: "驗證碼發送失敗，請稍後再試",
+      verifyFailed: "驗證碼校驗失敗，請稍後再試",
+    },
+    "zh-Hans": {
+      close: "关闭",
+      sending: "发送中...",
+      verifying: "验证中...",
+      sendCodeFailed: "验证码发送失败，请稍后再试",
+      verifyFailed: "验证码校验失败，请稍后再试",
+    },
+    en: {
+      close: "Close",
+      sending: "Sending...",
+      verifying: "Verifying...",
+      sendCodeFailed: "Failed to send verification code. Please try again later.",
+      verifyFailed: "Verification failed. Please try again later.",
+    },
+  });
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [agreed, setAgreed] = useState(false);
@@ -87,7 +115,7 @@ export default function AuthPage() {
       setHelperMessage(viewModel.codeSentMessage);
       setCountdown(60);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "验证码发送失败，请稍后再试";
+      const message = error instanceof Error ? error.message : copy.sendCodeFailed;
       setErrorMessage(message);
     } finally {
       setIsSending(false);
@@ -111,7 +139,7 @@ export default function AuthPage() {
       setIsVerifying(true);
       setErrorMessage("");
       const session = await verifyAuthCodeAndCreateSession(normalizedPhone, normalizedCode);
-      // 先把后端返回的基础信息写入 session，头像和昵称在下一步补齐。
+      // Persist base session first; avatar and nickname are completed on the next step.
       createAuthSession({
         phone: normalizedPhone,
         nickname: "",
@@ -136,7 +164,7 @@ export default function AuthPage() {
         router.push("/auth/invite");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "验证码校验失败，请稍后再试";
+      const message = error instanceof Error ? error.message : copy.verifyFailed;
       setErrorMessage(message);
     } finally {
       setIsVerifying(false);
@@ -152,7 +180,7 @@ export default function AuthPage() {
             <button
               type="button"
               onClick={() => setShowLeaveConfirm(true)}
-              aria-label="关闭"
+              aria-label={copy.close}
               className="absolute right-0 top-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-[28px] leading-none text-[#212121]"
             >
               ×
@@ -199,7 +227,7 @@ export default function AuthPage() {
                 }`}
               >
                 {isSending
-                  ? "发送中..."
+                  ? copy.sending
                   : countdown > 0
                   ? `${countdown}s`
                   : helperMessage
@@ -247,7 +275,7 @@ export default function AuthPage() {
                   : "bg-[#d8d8d8]"
               }`}
             >
-              {isVerifying ? "验证中..." : viewModel.nextLabel}
+              {isVerifying ? copy.verifying : viewModel.nextLabel}
             </button>
           </div>
 
@@ -261,9 +289,9 @@ export default function AuthPage() {
         {showLeaveConfirm ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(23,23,23,0.36)] px-6">
             <div className="w-full max-w-[330px] rounded-[20px] bg-[#f7f7f7] px-5 py-6 shadow-[0_24px_44px_rgba(28,28,28,0.28)]">
-              <h2 className="text-center text-[26px] font-semibold">确认离开注册流程？</h2>
+              <h2 className="text-center text-[26px] font-semibold">{leaveConfirmViewModel.title}</h2>
               <p className="mt-3 text-center text-[16px] leading-[1.5] text-[#666]">
-                已输入资料将不会保留，离开后需要重新输入。
+                {leaveConfirmViewModel.description}
               </p>
               <div className="mt-7 grid grid-cols-2 gap-3">
                 <button
@@ -271,7 +299,7 @@ export default function AuthPage() {
                   onClick={() => setShowLeaveConfirm(false)}
                   className="rounded-[14px] border border-[#e1e1e1] bg-white px-4 py-3 text-center text-[16px] font-medium text-[#575757]"
                 >
-                  取消
+                  {leaveConfirmViewModel.cancelLabel}
                 </button>
                 <button
                   type="button"
@@ -281,7 +309,7 @@ export default function AuthPage() {
                   }}
                   className="rounded-[14px] bg-[linear-gradient(90deg,#f49d38_0%,#ee7d00_100%)] px-4 py-3 text-center text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(230,129,20,0.26)]"
                 >
-                  离开
+                  {leaveConfirmViewModel.leaveLabel}
                 </button>
               </div>
             </div>

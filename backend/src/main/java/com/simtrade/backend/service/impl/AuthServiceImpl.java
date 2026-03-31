@@ -9,6 +9,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -32,7 +33,7 @@ public class AuthServiceImpl implements AuthService {
         CodeEntry latest = codeStore.get(phone);
         if (latest != null && !latest.isExpired() && !latest.canResend()) {
             long waitSeconds = RESEND_INTERVAL_SECONDS - latest.secondsSinceSend();
-            throw new IllegalArgumentException("发送过于频繁，请稍后再试（" + waitSeconds + "s）");
+            throw new IllegalArgumentException("Too many requests. Please try again later (" + waitSeconds + "s).");
         }
         String code = generateCode();
         Instant expireAt = Instant.now().plus(EXPIRE_MINUTES, ChronoUnit.MINUTES);
@@ -45,15 +46,15 @@ public class AuthServiceImpl implements AuthService {
     public AuthSessionResponse verifyCode(String phone, String code) {
         CodeEntry entry = codeStore.get(phone);
         if (entry == null || entry.isExpired()) {
-            throw new IllegalArgumentException("验证码已失效，请重新获取");
+            throw new IllegalArgumentException("Verification code expired. Please request a new one.");
         }
         if (!entry.code.equals(code)) {
-            throw new IllegalArgumentException("验证码不正确");
+            throw new IllegalArgumentException("Invalid verification code.");
         }
         codeStore.remove(phone);
         // 简单生成一个本地 token，生产环境应替换为 JWT 或会话管理。
         String token = generateToken(phone);
-        String userId = getDemoUserId(phone);
+        String userId = resolveUserId(phone);
         userProfileService.bindPhoneToUser(phone, userId);
         boolean profileCompleted = userProfileService.hasCompletedProfile(userId);
         return new AuthSessionResponse(userId, phone, token, profileCompleted);
@@ -70,10 +71,12 @@ public class AuthServiceImpl implements AuthService {
         return phone + "-" + RANDOM.nextLong();
     }
 
-    private String getDemoUserId(String phone) {
-        // 暂时返回固定前缀 + 手机尾号，方便前端展示。
-        String tail = phone.length() > 4 ? phone.substring(phone.length() - 4) : phone;
-        return "u_" + tail;
+    private String resolveUserId(String phone) {
+        String existingUserId = userProfileService.findUserIdByPhone(phone);
+        if (existingUserId != null && !existingUserId.trim().isEmpty()) {
+            return existingUserId.trim();
+        }
+        return "u_" + UUID.randomUUID().toString().replace("-", "");
     }
 
     private static class CodeEntry {

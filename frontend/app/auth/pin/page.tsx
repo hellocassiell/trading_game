@@ -1,9 +1,19 @@
+"use client";
+
 import Link from "next/link";
 import AppScreen from "../../../components/AppScreen";
+import { useLanguage } from "../../../components/LanguageProvider";
 import { getAuthPinViewModel } from "../../../lib/adapters/auth";
+import { byLanguage } from "../../../lib/locale";
 
 export default function AuthPinPage() {
+  const { language } = useLanguage();
   const viewModel = getAuthPinViewModel();
+  const copy = byLanguage(language, {
+    "zh-Hant": { close: "關閉" },
+    "zh-Hans": { close: "关闭" },
+    en: { close: "Close" },
+  });
 
   return (
     <AppScreen className="!px-0 !pb-0">
@@ -12,7 +22,7 @@ export default function AuthPinPage() {
           <div className="flex justify-end">
             <Link
               href={viewModel.closeHref}
-              aria-label="关闭"
+              aria-label={copy.close}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[19px] leading-none text-[#282828]"
             >
               ×

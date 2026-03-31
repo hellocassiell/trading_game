@@ -9,10 +9,11 @@ export default async function TradeConfirmPage({
   params,
 }: TradeConfirmPageProps) {
   const { symbol } = await params;
+  const product = await getTradeProductViewModel(symbol);
 
   return (
     <TradeConfirmPreview
-      product={getTradeProductViewModel(symbol)}
+      product={product}
       title="确认指示（下一交易日执行）"
     />
   );

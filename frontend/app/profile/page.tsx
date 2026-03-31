@@ -6,19 +6,68 @@ import ProfileSummaryCard from "../../components/ProfileSummaryCard";
 import { TradeTrigger } from "../../components/TradeModal";
 import { tradingApiClient } from "../../lib/api";
 import { readAuthSession } from "../../lib/adapters/auth";
-import type { AccountAssets, Position } from "../../lib/api";
+import type { AccountAssets, Position, TradeHistoryItem } from "../../lib/api";
 import {
+  buildProfileAssetTrend,
   mapAccountAssetsToProfileSummary,
   mapPositionsToCards,
 } from "../../lib/adapters/portfolio";
+import { byLanguage } from "../../lib/locale";
+import { useLanguage } from "../../components/LanguageProvider";
 
 function withHkdPrefix(value: string) {
   return `HK$ ${value}`;
 }
 
 export default function ProfilePage() {
+  const { language } = useLanguage();
+  const copy = byLanguage(language, {
+    "zh-Hant": {
+      loadError: "讀取持倉數據失敗",
+      reload: "重新載入",
+      empty: "暫無港股持倉",
+      emptyHint: "下單後會在這裡看到你的港股倉位",
+      holding: "持股量",
+      tradable: "持股(可交易)",
+      avg: "平均價",
+      pnl: "賺蝕*",
+      last: "現價",
+      marketValue: "參考市值",
+      updated: "更新於",
+      note: "* 賺蝕以平均買入價與現價港元估計",
+    },
+    "zh-Hans": {
+      loadError: "读取持仓数据失败",
+      reload: "重新载入",
+      empty: "暂无港股持仓",
+      emptyHint: "下单后会在这里看到你的港股仓位",
+      holding: "持股量",
+      tradable: "持股(可交易)",
+      avg: "平均价",
+      pnl: "赚蚀*",
+      last: "现价",
+      marketValue: "参考市值",
+      updated: "更新于",
+      note: "* 赚蚀以平均买入价与现价港元估计",
+    },
+    en: {
+      loadError: "Failed to load positions",
+      reload: "Reload",
+      empty: "No HK positions yet",
+      emptyHint: "Your positions appear here after placing orders",
+      holding: "Holding",
+      tradable: "Tradable",
+      avg: "Avg Price",
+      pnl: "P/L*",
+      last: "Last",
+      marketValue: "Market Value",
+      updated: "Updated",
+      note: "* P/L is estimated with average buy price and last HKD price",
+    },
+  });
   const [summary, setSummary] = useState<AccountAssets | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [historyItems, setHistoryItems] = useState<TradeHistoryItem[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "success" | "empty" | "error">("loading");
 
   useEffect(() => {
@@ -26,10 +75,13 @@ export default function ProfilePage() {
 
     async function loadData() {
       setLoadState("loading");
+      const session = readAuthSession();
+      const userId = session?.userId;
       try {
-        const [nextSummary, nextPositions] = await Promise.all([
-          tradingApiClient.getAccountAssets(),
-          tradingApiClient.getPositions(),
+        const [nextSummary, nextPositions, nextHistoryItems] = await Promise.all([
+          tradingApiClient.getAccountAssets(userId),
+          tradingApiClient.getPositions(userId),
+          tradingApiClient.getTradeHistory(userId),
         ]);
 
         if (cancelled) {
@@ -38,6 +90,7 @@ export default function ProfilePage() {
 
         setSummary(nextSummary);
         setPositions(nextPositions);
+        setHistoryItems(nextHistoryItems);
         setLoadState(nextPositions.length ? "success" : "empty");
       } catch {
         if (!cancelled) {
@@ -58,16 +111,18 @@ export default function ProfilePage() {
     if (!summary) {
       return undefined;
     }
-    const mapped = mapAccountAssetsToProfileSummary(summary);
+    const trend = buildProfileAssetTrend(summary.totalAssets, historyItems);
+    const mapped = mapAccountAssetsToProfileSummary(summary, trend);
     const session = readAuthSession();
-    if (session?.nickname) {
+    if ((!mapped.nickname && session?.nickname) || (!mapped.avatar && session?.avatarId)) {
       return {
         ...mapped,
-        nickname: session.nickname,
+        nickname: mapped.nickname || session?.nickname || "",
+        avatar: mapped.avatar || session?.avatarId || "",
       };
     }
     return mapped;
-  }, [summary]);
+  }, [summary, historyItems]);
 
   return (
     <AppScreen className="!px-0 !pb-[calc(env(safe-area-inset-bottom)+82px)]">
@@ -83,19 +138,19 @@ export default function ProfilePage() {
             </div>
           ) : loadState === "error" ? (
             <div className="py-8 text-center">
-              <p className="text-body font-semibold text-[#8f7a66]">读取持仓数据失败</p>
+              <p className="text-body font-semibold text-[#8f7a66]">{copy.loadError}</p>
               <button
                 type="button"
                 onClick={() => window.location.reload()}
                 className="btn-primary mt-4 px-4"
               >
-                重新载入
+                {copy.reload}
               </button>
             </div>
           ) : loadState === "empty" ? (
             <div className="py-8 text-center">
-              <p className="text-body font-semibold text-[#8f7a66]">暂无港股持仓</p>
-              <p className="text-helper mt-1 text-[#b39a80]">下单后会在这里看到你的港股仓位</p>
+              <p className="text-body font-semibold text-[#8f7a66]">{copy.empty}</p>
+              <p className="text-helper mt-1 text-[#b39a80]">{copy.emptyHint}</p>
             </div>
           ) : (
             <div className="divide-y divide-[#eee4d7]">
@@ -113,13 +168,13 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="mt-2 grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-1 text-label leading-5">
-                      <span className="text-[#9f9589]">持股量</span>
+                      <span className="text-[#9f9589]">{copy.holding}</span>
                       <span className="font-black text-[#5a4a39] whitespace-nowrap">{item.quantity}</span>
-                      <span className="text-[#9f9589]">持股(可交易)</span>
+                      <span className="text-[#9f9589]">{copy.tradable}</span>
                       <span className="font-black text-[#5a4a39] whitespace-nowrap">{item.available}</span>
-                      <span className="text-[#9f9589]">平均价</span>
+                      <span className="text-[#9f9589]">{copy.avg}</span>
                       <span className="font-black text-[#5a4a39] whitespace-nowrap">{withHkdPrefix(item.averagePrice)}</span>
-                      <span className="text-[#9f9589]">赚蚀*</span>
+                      <span className="text-[#9f9589]">{copy.pnl}</span>
                       <span className={`font-black whitespace-nowrap ${item.positive ? "text-[#22b26a]" : "text-[#ee5b62]"}`}>
                         {withHkdPrefix(item.pnl)} ({item.pct})
                       </span>
@@ -128,7 +183,7 @@ export default function ProfilePage() {
 
                   <div className="flex flex-col justify-between rounded-[16px] bg-[linear-gradient(180deg,#fff9f0,#fff0dd)] px-2.5 py-2.5 text-right shadow-[inset_0_0_0_1px_rgba(241,225,204,0.9)]">
                     <div>
-                      <p className="text-label font-semibold text-[#9f9589]">现价</p>
+                      <p className="text-label font-semibold text-[#9f9589]">{copy.last}</p>
                       <p className={`text-body mt-0.5 whitespace-nowrap font-black leading-none ${item.positive ? "text-[#22b26a]" : "text-[#ee5b62]"}`}>
                         {item.positive ? "▲ " : "▼ "}
                         {withHkdPrefix(item.currentPrice)}
@@ -136,7 +191,7 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="mt-2">
-                      <p className="text-label font-semibold text-[#9f9589]">参考市值</p>
+                      <p className="text-label font-semibold text-[#9f9589]">{copy.marketValue}</p>
                       <p className="text-body mt-0.5 whitespace-nowrap font-black leading-none text-[#5a4a39]">
                         {item.referenceMarketValue}
                       </p>
@@ -149,9 +204,9 @@ export default function ProfilePage() {
           )}
 
           <p className="text-helper mt-3 text-[#b9a692]">
-            更新于 {summary?.updatedAt ?? "—"}
+            {copy.updated} {summaryView?.updatedAt ?? "—"}
           </p>
-          <p className="text-label mt-1 text-[#c4b19b]">* 赚蚀以平均买入价与现价港元估计</p>
+          <p className="text-label mt-1 text-[#c4b19b]">{copy.note}</p>
         </div>
       </div>
     </AppScreen>

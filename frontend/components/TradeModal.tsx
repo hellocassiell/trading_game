@@ -9,7 +9,8 @@ import {
 } from "react";
 
 import TradeTicketCard from "./TradeTicketCard";
-import { getTradeProductViewModel } from "../lib/adapters/trade";
+import { byLanguage } from "../lib/locale";
+import { useLanguage } from "./LanguageProvider";
 
 type TradeModalVariant = "trade" | "order";
 
@@ -34,6 +35,12 @@ const TradeModalContext = createContext<TradeModalContextValue | null>(null);
 
 export function TradeModalProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<TradeModalState>(null);
+  const { language } = useLanguage();
+  const copy = byLanguage(language, {
+    "zh-Hant": { closeTradeModal: "關閉交易彈窗" },
+    "zh-Hans": { closeTradeModal: "关闭交易弹窗" },
+    en: { closeTradeModal: "Close trade modal" },
+  });
 
   const value = useMemo<TradeModalContextValue>(
     () => ({
@@ -52,13 +59,13 @@ export function TradeModalProvider({ children }: { children: ReactNode }) {
           <button
             type="button"
             className="absolute inset-0 cursor-default"
-            aria-label="关闭交易弹窗"
+            aria-label={copy.closeTradeModal}
             onClick={() => setState(null)}
           />
 
           <div className="relative z-10 w-full pb-0">
             <TradeTicketCard
-              product={state.symbol ? getTradeProductViewModel(state.symbol) : undefined}
+              symbol={state.symbol ?? undefined}
               variant={state.variant}
               orderId={state.orderId}
               orderStatus={state.orderStatus}

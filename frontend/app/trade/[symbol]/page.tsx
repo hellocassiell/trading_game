@@ -10,7 +10,7 @@ export default async function TradeDetailPage({
   params,
 }: TradeDetailPageProps) {
   const { symbol } = await params;
-  const product = getTradeProductViewModel(symbol);
+  const product = await getTradeProductViewModel(symbol);
 
   return (
     <AppScreen className="!px-0 !pb-0">

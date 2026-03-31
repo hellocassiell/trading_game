@@ -46,6 +46,12 @@ body {
 
 html {
   font-size: 15px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html[lang="en"] {
+  font-size: 14px;
 }
 
 body {
@@ -59,6 +65,7 @@ body {
   color: var(--app-text);
   line-height: 1.45;
   font-weight: 500;
+  -webkit-text-size-adjust: 100%;
 }
 
 button,
@@ -74,6 +81,53 @@ a {
 
 * {
   box-sizing: border-box;
+}
+
+.stack-gap-4 {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@supports not (gap: 16px) {
+  .stack-gap-4 > * + * {
+    margin-top: 16px;
+  }
+}
+
+.space-y-1\.5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(calc(var(--spacing) * 1.5) * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(calc(var(--spacing) * 1.5) * var(--tw-space-y-reverse));
+}
+
+.space-y-1 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(calc(var(--spacing) * 1) * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(calc(var(--spacing) * 1) * var(--tw-space-y-reverse));
+}
+
+.space-y-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(calc(var(--spacing) * 2) * var(--tw-space-y-reverse));
+}
+
+.space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(calc(var(--spacing) * 3) * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(calc(var(--spacing) * 3) * var(--tw-space-y-reverse));
+}
+
+.space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));
+}
+
+.my-2 {
+  margin-top: calc(var(--spacing) * 2);
+  margin-bottom: calc(var(--spacing) * 2);
 }
 
 .app-shadow {
@@ -166,6 +220,7 @@ a {
 .nav-item {
   min-height: 48px;
   padding-block: 8px;
+  touch-action: manipulation;
 }
 
 .state-skeleton {

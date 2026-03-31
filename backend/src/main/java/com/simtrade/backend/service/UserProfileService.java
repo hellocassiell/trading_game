@@ -1,22 +1,48 @@
 package com.simtrade.backend.service;
 
+import com.simtrade.backend.entity.UserProfileEntity;
+import com.simtrade.backend.mapper.UserProfileMapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class UserProfileService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserProfileService.class);
+
+    private final UserProfileMapper userProfileMapper;
     private final Map<String, UserProfile> profileStore = new ConcurrentHashMap<>();
     private final Map<String, String> phoneToUserIdStore = new ConcurrentHashMap<>();
+
+    public UserProfileService(@Autowired(required = false) UserProfileMapper userProfileMapper) {
+        this.userProfileMapper = userProfileMapper;
+    }
 
     public void bindPhoneToUser(String phone, String userId) {
         if (isBlank(phone) || isBlank(userId)) {
             return;
         }
-        phoneToUserIdStore.put(phone.trim(), userId.trim());
+        String safePhone = phone.trim();
+        String safeUserId = userId.trim();
+        phoneToUserIdStore.put(safePhone, safeUserId);
+        UserProfile profile = profileStore.getOrDefault(safeUserId, new UserProfile());
+        if (profile.createdAt == null) {
+            profile.createdAt = LocalDateTime.now();
+        }
+        profile.phone = safePhone;
+        profile.updatedAt = LocalDateTime.now();
+        profileStore.put(safeUserId, profile);
+        upsertDbProfile(safeUserId, dbProfile -> dbProfile.setPhone(safePhone));
     }
 
     public void upsertProfile(String userId, String nickname, String avatarId) {
@@ -25,28 +51,64 @@ public class UserProfileService {
         }
         String safeUserId = userId.trim();
         UserProfile profile = profileStore.getOrDefault(safeUserId, new UserProfile());
+        if (profile.createdAt == null) {
+            profile.createdAt = LocalDateTime.now();
+        }
         if (!isBlank(nickname)) {
             profile.nickname = nickname.trim();
         }
         if (!isBlank(avatarId)) {
             profile.avatarId = avatarId.trim();
         }
-        profile.updatedAt = Instant.now().toString();
+        profile.updatedAt = LocalDateTime.now();
         profileStore.put(safeUserId, profile);
+
+        upsertDbProfile(safeUserId, dbProfile -> {
+            if (!isBlank(nickname)) {
+                dbProfile.setNickname(nickname.trim());
+            }
+            if (!isBlank(avatarId)) {
+                dbProfile.setAvatarId(avatarId.trim());
+            }
+        });
     }
 
     public String getNickname(String userId) {
-        UserProfile profile = profileStore.get(normalizeKey(userId));
+        String safeUserId = normalizeKey(userId);
+        if (safeUserId == null) {
+            return null;
+        }
+        UserProfileEntity dbProfile = selectDbProfile(safeUserId);
+        if (dbProfile != null && !isBlank(dbProfile.getNickname())) {
+            return dbProfile.getNickname().trim();
+        }
+        UserProfile profile = profileStore.get(safeUserId);
         return profile == null ? null : profile.nickname;
     }
 
     public String getAvatarId(String userId) {
-        UserProfile profile = profileStore.get(normalizeKey(userId));
+        String safeUserId = normalizeKey(userId);
+        if (safeUserId == null) {
+            return null;
+        }
+        UserProfileEntity dbProfile = selectDbProfile(safeUserId);
+        if (dbProfile != null && !isBlank(dbProfile.getAvatarId())) {
+            return dbProfile.getAvatarId().trim();
+        }
+        UserProfile profile = profileStore.get(safeUserId);
         return profile == null ? null : profile.avatarId;
     }
 
     public boolean hasCompletedProfile(String userId) {
-        UserProfile profile = profileStore.get(normalizeKey(userId));
+        String safeUserId = normalizeKey(userId);
+        if (safeUserId == null) {
+            return false;
+        }
+        UserProfileEntity dbProfile = selectDbProfile(safeUserId);
+        if (dbProfile != null) {
+            return !isBlank(dbProfile.getNickname()) && !isBlank(dbProfile.getAvatarId());
+        }
+        UserProfile profile = profileStore.get(safeUserId);
         if (profile == null) {
             return false;
         }
@@ -58,12 +120,106 @@ public class UserProfileService {
         if (safeUserId == null) {
             return null;
         }
+        UserProfileEntity dbProfile = selectDbProfile(safeUserId);
+        if (dbProfile != null && !isBlank(dbProfile.getPhone())) {
+            return dbProfile.getPhone().trim();
+        }
         for (Map.Entry<String, String> entry : phoneToUserIdStore.entrySet()) {
             if (safeUserId.equals(entry.getValue())) {
                 return entry.getKey();
             }
         }
+        UserProfile profile = profileStore.get(safeUserId);
+        if (profile != null && !isBlank(profile.phone)) {
+            return profile.phone;
+        }
         return null;
+    }
+
+    public String findUserIdByPhone(String phone) {
+        String safePhone = normalizeKey(phone);
+        if (safePhone == null) {
+            return null;
+        }
+        String memoryUserId = phoneToUserIdStore.get(safePhone);
+        if (!isBlank(memoryUserId)) {
+            return memoryUserId.trim();
+        }
+        if (userProfileMapper != null) {
+            try {
+                UserProfileEntity entity = userProfileMapper.selectOne(new QueryWrapper<UserProfileEntity>()
+                        .eq("phone", safePhone)
+                        .last("LIMIT 1"));
+                if (entity != null && !isBlank(entity.getUserId())) {
+                    return entity.getUserId().trim();
+                }
+            } catch (Exception ex) {
+                log.warn("Load user profile by phone from db failed, fallback to in-memory. phone={}, reason={}", safePhone, ex.getMessage());
+            }
+        }
+        for (Map.Entry<String, UserProfile> entry : profileStore.entrySet()) {
+            UserProfile profile = entry.getValue();
+            if (profile != null && safePhone.equals(normalizeKey(profile.phone))) {
+                return normalizeKey(entry.getKey());
+            }
+        }
+        return null;
+    }
+
+    public List<CompletedProfile> listCompletedProfiles() {
+        Map<String, CompletedProfile> profileMap = new LinkedHashMap<>();
+
+        if (userProfileMapper != null) {
+            try {
+                List<UserProfileEntity> dbProfiles = userProfileMapper.selectList(null);
+                if (dbProfiles != null) {
+                    for (UserProfileEntity dbProfile : dbProfiles) {
+                        if (dbProfile == null || !isCompletedProfile(dbProfile.getNickname(), dbProfile.getAvatarId())) {
+                            continue;
+                        }
+                        String safeUserId = normalizeKey(dbProfile.getUserId());
+                        if (safeUserId == null) {
+                            continue;
+                        }
+                        profileMap.put(safeUserId, new CompletedProfile(safeUserId, dbProfile.getCreatedAt()));
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("Load completed user profiles from db failed, fallback to in-memory. reason={}", ex.getMessage());
+            }
+        }
+
+        for (Map.Entry<String, UserProfile> entry : profileStore.entrySet()) {
+            String safeUserId = normalizeKey(entry.getKey());
+            UserProfile profile = entry.getValue();
+            if (safeUserId == null || profile == null || !isCompletedProfile(profile.nickname, profile.avatarId)) {
+                continue;
+            }
+            CompletedProfile existing = profileMap.get(safeUserId);
+            if (existing == null || existing.getCreatedAt() == null) {
+                profileMap.put(safeUserId, new CompletedProfile(safeUserId, profile.createdAt));
+            }
+        }
+
+        List<CompletedProfile> profiles = new ArrayList<>(profileMap.values());
+        profiles.sort((left, right) -> {
+            LocalDateTime leftCreatedAt = left == null ? null : left.getCreatedAt();
+            LocalDateTime rightCreatedAt = right == null ? null : right.getCreatedAt();
+            if (leftCreatedAt != null && rightCreatedAt != null) {
+                int compareCreatedAt = leftCreatedAt.compareTo(rightCreatedAt);
+                if (compareCreatedAt != 0) {
+                    return compareCreatedAt;
+                }
+            } else if (leftCreatedAt != null) {
+                return -1;
+            } else if (rightCreatedAt != null) {
+                return 1;
+            }
+            String leftUserId = left == null ? "" : left.getUserId();
+            String rightUserId = right == null ? "" : right.getUserId();
+            return leftUserId.compareTo(rightUserId);
+        });
+        return profiles;
     }
 
     private String normalizeKey(String value) {
@@ -73,13 +229,73 @@ public class UserProfileService {
         return value.trim();
     }
 
+    private boolean isCompletedProfile(String nickname, String avatarId) {
+        return !isBlank(nickname) && !isBlank(avatarId);
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
 
+    private UserProfileEntity selectDbProfile(String userId) {
+        if (userProfileMapper == null) {
+            return null;
+        }
+        try {
+            return userProfileMapper.selectById(userId);
+        } catch (Exception ex) {
+            log.warn("Load user profile from db failed, fallback to in-memory. userId={}, reason={}", userId, ex.getMessage());
+            return null;
+        }
+    }
+
+    private void upsertDbProfile(String userId, java.util.function.Consumer<UserProfileEntity> mutator) {
+        if (userProfileMapper == null) {
+            return;
+        }
+        try {
+            UserProfileEntity existing = userProfileMapper.selectById(userId);
+            LocalDateTime now = LocalDateTime.now();
+            if (existing == null) {
+                UserProfileEntity created = new UserProfileEntity();
+                created.setUserId(userId);
+                created.setCreatedAt(now);
+                created.setUpdatedAt(now);
+                mutator.accept(created);
+                userProfileMapper.insert(created);
+                return;
+            }
+            mutator.accept(existing);
+            existing.setUpdatedAt(now);
+            userProfileMapper.updateById(existing);
+        } catch (Exception ex) {
+            log.warn("Persist user profile to db failed, fallback to in-memory. userId={}, reason={}", userId, ex.getMessage());
+        }
+    }
+
     private static class UserProfile {
+        private LocalDateTime createdAt;
+        private String phone;
         private String nickname;
         private String avatarId;
-        private String updatedAt;
+        private LocalDateTime updatedAt;
+    }
+
+    public static class CompletedProfile {
+        private final String userId;
+        private final LocalDateTime createdAt;
+
+        public CompletedProfile(String userId, LocalDateTime createdAt) {
+            this.userId = userId;
+            this.createdAt = createdAt;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public LocalDateTime getCreatedAt() {
+            return createdAt;
+        }
     }
 }

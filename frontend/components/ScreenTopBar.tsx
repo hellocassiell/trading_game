@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Bell,
@@ -6,7 +8,9 @@ import {
   Search,
 } from "lucide-react";
 
-import { appMeta } from "../lib/mock-data";
+import { appMeta } from "../lib/app-meta";
+import { byLanguage } from "../lib/locale";
+import { useLanguage } from "./LanguageProvider";
 
 type ScreenTopBarProps = {
   title?: string;
@@ -33,6 +37,30 @@ export default function ScreenTopBar({
   hideMetaRow = false,
   hideTrailing = false,
 }: ScreenTopBarProps) {
+  const { language } = useLanguage();
+  const copy = byLanguage(language, {
+    "zh-Hant": {
+      back: "返回",
+      menu: "選單",
+      search: "搜尋",
+      notify: "通知",
+      meta: "港股模擬投資比賽",
+    },
+    "zh-Hans": {
+      back: "返回",
+      menu: "菜单",
+      search: "搜索",
+      notify: "通知",
+      meta: "港股模拟投资比赛",
+    },
+    en: {
+      back: "Back",
+      menu: "Menu",
+      search: "Search",
+      notify: "Notifications",
+      meta: "HK Stock Trading Game",
+    },
+  });
   const minimalHeader = hideLeading && hideTitle;
   const shellClass = minimalHeader
     ? "sticky top-0 z-20 -mx-[var(--app-gutter)] mb-3 overflow-hidden bg-[linear-gradient(180deg,#ffb45a_0%,var(--app-orange)_56%,var(--app-orange-dark)_100%)] px-[var(--app-gutter)] pb-2 pt-[max(env(safe-area-inset-top),10px)] text-white shadow-[0_12px_24px_rgba(171,86,0,0.16)]"
@@ -47,7 +75,7 @@ export default function ScreenTopBar({
           <Link
             href={backHref ?? "/"}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-white/14 text-white active:bg-white/20"
-            aria-label="返回"
+            aria-label={copy.back}
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
@@ -55,7 +83,7 @@ export default function ScreenTopBar({
           <button
             type="button"
             className="flex h-8 w-8 items-center justify-center rounded-full bg-white/14 text-white active:bg-white/20"
-            aria-label="菜单"
+            aria-label={copy.menu}
           >
             <Menu className="h-4.5 w-4.5" />
           </button>
@@ -80,7 +108,7 @@ export default function ScreenTopBar({
           <button
             type="button"
             className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/14 text-white active:bg-white/20"
-            aria-label={showSearch ? "搜索" : "通知"}
+            aria-label={showSearch ? copy.search : copy.notify}
           >
             {showSearch ? (
               <Search className="h-4.5 w-4.5" />
@@ -96,7 +124,7 @@ export default function ScreenTopBar({
 
       {!compact && !minimalHeader && !hideMetaRow ? (
         <div className="text-label mt-2 flex items-center justify-between text-white/78">
-            <span>港股模拟投资比赛</span>
+            <span>{copy.meta}</span>
             <span>04 MAY 2021</span>
         </div>
       ) : null}

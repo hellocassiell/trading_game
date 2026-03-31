@@ -1,29 +1,73 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppScreen from "../../../components/AppScreen";
+import { tradingApiClient } from "../../../lib/api";
 import {
   clearAuthDraft,
   createAuthSession,
   getInviteViewModel,
+  getLeaveConfirmViewModel,
   readAuthDraft,
   readAuthSession,
   saveAuthDraft,
   submitRegistrationProfile,
+  uploadRegistrationAvatar,
 } from "../../../lib/adapters/auth";
+import { useLanguage } from "../../../components/LanguageProvider";
+import { byLanguage } from "../../../lib/locale";
+import { resolveAvatarSrc } from "../../../lib/avatar";
 
 export default function AuthInvitePage() {
   const router = useRouter();
+  const { language } = useLanguage();
   const viewModel = getInviteViewModel();
+  const leaveConfirmViewModel = getLeaveConfirmViewModel();
+  const copy = byLanguage(language, {
+    "zh-Hant": {
+      close: "關閉",
+      uploadAvatar: "上傳頭像",
+      uploadingAvatar: "上傳中...",
+      submitting: "提交中...",
+      sessionExpired: "登入會話已失效，請重新獲取驗證碼",
+      saveFailed: "保存註冊資料失敗，請稍後再試",
+    },
+    "zh-Hans": {
+      close: "关闭",
+      uploadAvatar: "上传头像",
+      uploadingAvatar: "上传中...",
+      submitting: "提交中...",
+      sessionExpired: "登录会话已失效，请重新获取验证码",
+      saveFailed: "保存注册资料失败，请稍后再试",
+    },
+    en: {
+      close: "Close",
+      uploadAvatar: "Upload avatar",
+      uploadingAvatar: "Uploading...",
+      submitting: "Submitting...",
+      sessionExpired: "Session expired. Please request the code again.",
+      saveFailed: "Failed to save profile. Please try again later.",
+    },
+  });
   const [selectedAvatarId, setSelectedAvatarId] = useState("");
   const [nickname, setNickname] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const trimmedNickname = nickname.trim();
-  const canConfirm = Boolean(selectedAvatarId && trimmedNickname);
+  const canConfirm = Boolean(selectedAvatarId && selectedAvatarId !== "upload" && trimmedNickname);
+  const presetAvatarIds = new Set(viewModel.avatars.map((item) => item.id));
+  const uploadedAvatarSrc = selectedAvatarId === "upload" || presetAvatarIds.has(selectedAvatarId)
+    ? null
+    : resolveAvatarSrc(selectedAvatarId);
+
+  function limitNicknameLength(value: string) {
+    return Array.from(value).slice(0, 8).join("");
+  }
 
   useEffect(() => {
     const session = readAuthSession();
@@ -32,7 +76,7 @@ export default function AuthInvitePage() {
       return;
     }
     const draft = readAuthDraft();
-    if (draft.avatarId) {
+    if (draft.avatarId && draft.avatarId !== "upload") {
       setSelectedAvatarId(draft.avatarId);
     }
     if (draft.nickname) {
@@ -61,37 +105,61 @@ export default function AuthInvitePage() {
     const prevSession = readAuthSession();
     const userId = prevSession?.userId;
     if (!userId) {
-      setErrorMessage("登录会话已失效，请重新获取验证码");
+      setErrorMessage(copy.sessionExpired);
       return;
     }
     setSubmitting(true);
+    let syncedNickname = trimmedNickname;
+    let syncedAvatarId = selectedAvatarId;
     try {
       await submitRegistrationProfile({
         userId,
         nickname: trimmedNickname,
         avatarId: selectedAvatarId,
       });
+      const profile = await tradingApiClient.getAccountAssets(userId);
+      syncedNickname = profile.nickname || trimmedNickname;
+      syncedAvatarId = profile.avatar || selectedAvatarId;
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "保存注册资料失败，请稍后再试");
+      setErrorMessage(error instanceof Error ? error.message : copy.saveFailed);
       setSubmitting(false);
       return;
     }
     createAuthSession({
       phone: prevSession?.phone ?? "",
-      nickname: trimmedNickname,
-      avatarId: selectedAvatarId,
+      nickname: syncedNickname,
+      avatarId: syncedAvatarId,
       loggedInAt: new Date().toISOString(),
       userId,
       token: prevSession?.token,
     });
-    saveAuthDraft({
-      avatarId: selectedAvatarId,
-      nickname: trimmedNickname,
-      step: "invite",
-    });
+    clearAuthDraft();
     setErrorMessage("");
     setSubmitting(false);
     router.push("/");
+  }
+
+  async function handleAvatarUpload(file: File) {
+    const prevSession = readAuthSession();
+    const userId = prevSession?.userId;
+    if (!userId) {
+      setErrorMessage(copy.sessionExpired);
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const uploaded = await uploadRegistrationAvatar({ userId, file });
+      const nextAvatarId = uploaded.avatarId || uploaded.avatarUrl;
+      setSelectedAvatarId(nextAvatarId);
+      saveAuthDraft({ avatarId: nextAvatarId, step: "invite" });
+      if (errorMessage) {
+        setErrorMessage("");
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : copy.saveFailed);
+    } finally {
+      setUploadingAvatar(false);
+    }
   }
 
   return (
@@ -102,7 +170,7 @@ export default function AuthInvitePage() {
             <button
               type="button"
               onClick={() => setShowLeaveConfirm(true)}
-              aria-label="关闭"
+              aria-label={copy.close}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#8d8d8d] text-[18px] leading-none text-white"
             >
               ×
@@ -133,7 +201,11 @@ export default function AuthInvitePage() {
                       : "border-[#d2d2d2] bg-[#ece3d5]"
                   }`}
                 >
-                  {avatar.emoji}
+                  <img
+                    src={avatar.src}
+                    alt={avatar.label}
+                    className="h-full w-full rounded-full object-cover"
+                  />
                 </button>
               );
             })}
@@ -143,34 +215,52 @@ export default function AuthInvitePage() {
             <button
               type="button"
               onClick={() => {
-                setSelectedAvatarId("upload");
-                saveAuthDraft({ avatarId: "upload", step: "invite" });
-                if (errorMessage) {
-                  setErrorMessage("");
-                }
+                fileInputRef.current?.click();
               }}
               className={`inline-flex h-[86px] w-[86px] items-center justify-center rounded-full text-[40px] leading-none transition ${
-                selectedAvatarId === "upload"
+                uploadedAvatarSrc
                   ? "bg-[#ffe8cc] text-[#df7e10]"
                   : "bg-[#e5e5e5] text-[#787878]"
               }`}
-              aria-label="上传头像"
+              disabled={uploadingAvatar}
+              aria-label={copy.uploadAvatar}
             >
-              {viewModel.uploadLabel}
+              {uploadingAvatar ? (
+                <span className="px-2 text-center text-[14px] font-medium">{copy.uploadingAvatar}</span>
+              ) : uploadedAvatarSrc ? (
+                <img src={uploadedAvatarSrc} alt={copy.uploadAvatar} className="h-full w-full rounded-full object-cover" />
+              ) : (
+                viewModel.uploadLabel
+              )}
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) {
+                  return;
+                }
+                void handleAvatarUpload(file);
+              }}
+            />
           </div>
 
           <div className="mt-14">
             <input
               value={nickname}
               onChange={(event) => {
-                const nextNickname = event.target.value.slice(0, 20);
+                const nextNickname = limitNicknameLength(event.target.value);
                 setNickname(nextNickname);
                 saveAuthDraft({ nickname: nextNickname, step: "invite" });
                 if (errorMessage) {
                   setErrorMessage("");
                 }
               }}
+              maxLength={8}
               placeholder={viewModel.nicknamePlaceholder}
               className="w-full border-b border-[#d4d4d4] bg-transparent pb-3 text-center text-[33px] text-[#1f1f1f] outline-none placeholder:text-[#9d9d9d]"
             />
@@ -196,7 +286,7 @@ export default function AuthInvitePage() {
                   : "bg-[#e4e4e4] text-[#bababa]"
               }`}
             >
-              {submitting ? "提交中..." : viewModel.confirmLabel}
+              {submitting ? copy.submitting : viewModel.confirmLabel}
             </button>
           </div>
         </div>
@@ -204,9 +294,9 @@ export default function AuthInvitePage() {
         {showLeaveConfirm ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(23,23,23,0.36)] px-6">
             <div className="w-full max-w-[330px] rounded-[20px] bg-[#f7f7f7] px-5 py-6 shadow-[0_24px_44px_rgba(28,28,28,0.28)]">
-              <h2 className="text-center text-[26px] font-semibold">确认离开注册流程？</h2>
+              <h2 className="text-center text-[26px] font-semibold">{leaveConfirmViewModel.title}</h2>
               <p className="mt-3 text-center text-[16px] leading-[1.5] text-[#666]">
-                已输入资料将不会保留，离开后需要重新输入。
+                {leaveConfirmViewModel.description}
               </p>
               <div className="mt-7 grid grid-cols-2 gap-3">
                 <button
@@ -214,7 +304,7 @@ export default function AuthInvitePage() {
                   onClick={() => setShowLeaveConfirm(false)}
                   className="rounded-[14px] border border-[#e1e1e1] bg-white px-4 py-3 text-center text-[16px] font-medium text-[#575757]"
                 >
-                  取消
+                  {leaveConfirmViewModel.cancelLabel}
                 </button>
                 <button
                   type="button"
@@ -224,7 +314,7 @@ export default function AuthInvitePage() {
                   }}
                   className="rounded-[14px] bg-[linear-gradient(90deg,#f49d38_0%,#ee7d00_100%)] px-4 py-3 text-center text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(230,129,20,0.26)]"
                 >
-                  离开
+                  {leaveConfirmViewModel.leaveLabel}
                 </button>
               </div>
             </div>

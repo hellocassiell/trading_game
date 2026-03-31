@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import AppFrame from "../components/AppFrame";
 import { TradeModalProvider } from "../components/TradeModal";
+import { LanguageProvider } from "../components/LanguageProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,11 +26,13 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-Hant">
       <body className="min-h-screen antialiased">
-        <TradeModalProvider>
-          <AppFrame>{children}</AppFrame>
-        </TradeModalProvider>
+        <LanguageProvider>
+          <TradeModalProvider>
+            <AppFrame>{children}</AppFrame>
+          </TradeModalProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

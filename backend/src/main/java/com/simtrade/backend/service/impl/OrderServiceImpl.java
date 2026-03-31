@@ -2,23 +2,27 @@ package com.simtrade.backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simtrade.backend.dto.OrderRequest;
 import com.simtrade.backend.dto.TradeOrderAmendRequest;
 import com.simtrade.backend.dto.TradeOrderCreateRequest;
 import com.simtrade.backend.dto.TradeOrderPreviewResult;
 import com.simtrade.backend.dto.TradeOrderSubmitResult;
 import com.simtrade.backend.entity.Order;
+import com.simtrade.backend.service.AccountLedgerService;
 import com.simtrade.backend.service.FeeCalculator;
 import com.simtrade.backend.mapper.OrderMapper;
 import com.simtrade.backend.service.MockDataService;
 import com.simtrade.backend.service.OrderService;
+import com.simtrade.backend.service.TradingCalendarService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.DayOfWeek;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -29,12 +33,12 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -49,14 +53,19 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private static final int STATUS_FILLED = 2;
     private static final int STATUS_CANCELED = 3;
     private static final int MAX_PENDING_LIMIT_ORDERS = 5;
+    private static final long DUPLICATE_WINDOW_MS = 1500;
+    private static final String REDIS_SUBMISSION_KEY_PREFIX = "trade:dedup:submit:";
+    private static final String REDIS_IDEMPOTENCY_KEY_PREFIX = "trade:idempotency:submit:";
+    private static final long IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60;
     private static final ZoneId HK_ZONE = ZoneId.of("Asia/Hong_Kong");
     private static final LocalTime MORNING_OPEN = LocalTime.of(9, 30);
     private static final LocalTime MORNING_CLOSE = LocalTime.of(12, 0);
     private static final LocalTime AFTERNOON_OPEN = LocalTime.of(13, 0);
     private static final LocalTime MARKET_CLOSE = LocalTime.of(16, 0);
 
-    private final ConcurrentMap<String, Order> localOrderStore = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, String> orderTypeStore = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Long> submissionTracker = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, SubmissionIdempotencyRecord> localIdempotencyTracker = new ConcurrentHashMap<String, SubmissionIdempotencyRecord>();
+    private final ConcurrentMap<String, Object> idempotencyLocks = new ConcurrentHashMap<String, Object>();
     private Clock tradingClock = Clock.system(HK_ZONE);
 
     @Autowired
@@ -64,6 +73,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Autowired
     private FeeCalculator feeCalculator;
+
+    @Autowired(required = false)
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Autowired(required = false)
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    @Autowired(required = false)
+    private AccountLedgerService accountLedgerService = new AccountLedgerService();
+
+    @Autowired(required = false)
+    private TradingCalendarService tradingCalendarService = new TradingCalendarService();
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -80,22 +101,49 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TradeOrderSubmitResult placeOrderV1(String userId, TradeOrderCreateRequest request) {
+        return placeOrderV1(userId, request, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TradeOrderSubmitResult placeOrderV1(String userId, TradeOrderCreateRequest request, String idempotencyKey) {
+        String normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+        if (normalizedKey == null) {
+            return doPlaceOrderV1(userId, request);
+        }
+
+        String redisKey = REDIS_IDEMPOTENCY_KEY_PREFIX + userId + ":" + normalizedKey;
+        String requestFingerprint = buildIdempotencyFingerprint(request);
+        Object lock = idempotencyLocks.computeIfAbsent(redisKey, key -> new Object());
+        synchronized (lock) {
+            SubmissionIdempotencyRecord existing = loadIdempotencyRecord(redisKey);
+            if (existing != null) {
+                ensureSamePayload(existing, requestFingerprint);
+                return existing.toSubmitResult();
+            }
+            TradeOrderSubmitResult created = doPlaceOrderV1(userId, request);
+            storeIdempotencyRecord(redisKey, SubmissionIdempotencyRecord.from(requestFingerprint, created));
+            return created;
+        }
+    }
+
+    private TradeOrderSubmitResult doPlaceOrderV1(String userId, TradeOrderCreateRequest request) {
         ValidationContext context = validateAndBuildContext(userId, request);
+        ensureUniqueSubmission(buildSubmissionSignature(userId, context));
         Order order = buildPendingOrder(
                 userId,
                 context.stockCode,
                 context.type,
+                context.orderType,
                 context.effectivePrice,
                 context.quantity
         );
         applyInitialExecution(order, context);
-        try {
-            this.save(order);
-        } catch (Exception e) {
-            log.warn("Persist order failed, fallback to in-memory only. orderId={}, reason={}",
-                    order.getId(), e.getMessage());
+        boolean saved = this.save(order);
+        if (!saved) {
+            throw new IllegalStateException("Persist order failed.");
         }
-        saveToLocalStore(order, context.orderType);
+        applyLedgerAfterOrderAccepted(order, context);
 
         TradeOrderSubmitResult result = new TradeOrderSubmitResult();
         result.setOrderId(order.getId());
@@ -152,31 +200,16 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Override
     public long countTodayBuyOrders(String userId) {
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        long dbCount = 0;
-        try {
-            dbCount = this.count(new QueryWrapper<Order>()
-                    .eq("user_id", userId)
-                    .eq("type", TYPE_BUY)
-                    .ge("create_time", startOfDay));
-        } catch (Exception e) {
-            log.warn("Count buy orders from db failed, fallback to in-memory only. reason={}", e.getMessage());
-        }
-
-        long localCount = localOrderStore.values().stream()
-                .filter(order -> userId.equals(order.getUserId()))
-                .filter(order -> TYPE_BUY == safeInt(order.getType()))
-                .filter(order -> order.getCreateTime() != null && !order.getCreateTime().isBefore(startOfDay))
-                .count();
-
-        if (dbCount <= 0) {
-            return localCount;
-        }
-        return Math.max(dbCount, localCount);
+        LocalDateTime startOfDay = LocalDate.now(tradingClock).atStartOfDay();
+        return this.count(new QueryWrapper<Order>()
+                .eq("user_id", userId)
+                .eq("type", TYPE_BUY)
+                .ge("create_time", startOfDay));
     }
 
     @Override
     public List<Order> listActiveOrders(String userId, String status) {
+        closeExpiredLimitOrders(nowInHkDateTime());
         List<Order> orders = listOrdersByUser(userId);
 
         if ("FILLED".equalsIgnoreCase(status)) {
@@ -193,6 +226,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Override
     public List<Order> listHistoryOrders(String userId, LocalDate dateFrom, LocalDate dateTo) {
+        closeExpiredLimitOrders(nowInHkDateTime());
         List<Order> orders = listOrdersByUser(userId);
         return orders.stream()
                 .filter(order -> safeInt(order.getStatus()) == STATUS_FILLED
@@ -223,14 +257,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
 
         order.setStatus(STATUS_CANCELED);
-        order.setUpdateTime(LocalDateTime.now());
-        try {
-            this.updateById(order);
-        } catch (Exception e) {
-            log.warn("Cancel order db update failed, fallback to in-memory only. orderId={}, reason={}",
-                    orderId, e.getMessage());
+        order.setUpdateTime(nowInHkDateTime());
+        boolean updated = this.updateById(order);
+        if (!updated) {
+            throw new IllegalStateException("Cancel order persistence failed.");
         }
-        saveToLocalStore(order, getOrderType(orderId));
+        if (accountLedgerService != null) {
+            accountLedgerService.releaseOnOrderCanceled(order, safeOrderType(order.getOrderType()));
+        }
         return cloneOrder(order);
     }
 
@@ -260,37 +294,160 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 currentPrice.add(tickSize.multiply(new BigDecimal("20")))
         );
         validateLimitQueueLimit(userId, "LIMIT", orderId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = nowInHkDateTime();
         Order canceledOrder = cloneOrder(order);
         canceledOrder.setStatus(STATUS_CANCELED);
         canceledOrder.setUpdateTime(now);
-        try {
-            this.updateById(canceledOrder);
-        } catch (Exception e) {
-            log.warn("Cancel original order failed during amend. orderId={}, reason={}", orderId, e.getMessage());
+        boolean canceledUpdated = this.updateById(canceledOrder);
+        if (!canceledUpdated) {
+            throw new IllegalStateException("Cancel original order during amend failed.");
         }
-        saveToLocalStore(canceledOrder, getOrderType(orderId));
+        if (accountLedgerService != null) {
+            accountLedgerService.releaseOnOrderCanceled(canceledOrder, safeOrderType(canceledOrder.getOrderType()));
+        }
 
         Order amendedOrder = buildPendingOrder(
                 userId,
                 order.getStockCode(),
                 safeInt(order.getType()),
+                "LIMIT",
                 request.getPrice(),
                 request.getQuantity()
         );
-        try {
-            this.save(amendedOrder);
-        } catch (Exception e) {
-            log.warn("Persist amended order failed, fallback to in-memory only. orderId={}, reason={}",
-                    amendedOrder.getId(), e.getMessage());
+        boolean saved = this.save(amendedOrder);
+        if (!saved) {
+            throw new IllegalStateException("Persist amended order failed.");
         }
-        saveToLocalStore(amendedOrder, "LIMIT");
+        if (accountLedgerService != null) {
+            int lotSize = mockDataService.getLotSize(amendedOrder.getStockCode());
+            int lots = Math.max(1, amendedOrder.getQuantity() / Math.max(1, lotSize));
+            BigDecimal estimateAmount = amendedOrder.getPrice()
+                    .multiply(new BigDecimal(amendedOrder.getQuantity()))
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal estimateFee = feeCalculator.calculateTotalFee(estimateAmount, safeInt(amendedOrder.getType()) == TYPE_BUY, lots);
+            accountLedgerService.reserveForPendingOrder(amendedOrder, "LIMIT", estimateFee);
+        }
         return cloneOrder(amendedOrder);
     }
 
     @Override
     public String getOrderType(String orderId) {
-        return orderTypeStore.getOrDefault(orderId, "LIMIT");
+        Order order = getOrderByIdOrNull(orderId);
+        if (order == null) {
+            return "LIMIT";
+        }
+        return safeOrderType(order.getOrderType());
+    }
+
+    @Override
+    public List<Order> listOpenOrdersByStock(String stockCode) {
+        if (stockCode == null || stockCode.trim().isEmpty()) {
+            return new ArrayList<Order>();
+        }
+        List<Order> result = this.list(new QueryWrapper<Order>()
+                .eq("stock_code", stockCode)
+                .in("status", STATUS_PENDING, STATUS_PARTIAL_FILLED));
+        result.sort(Comparator.comparing(Order::getCreateTime, Comparator.nullsLast(LocalDateTime::compareTo)));
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Order applyMatchExecution(String orderId, BigDecimal executionPrice, int matchedQuantity) {
+        if (orderId == null || orderId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Order not found");
+        }
+        if (executionPrice == null || executionPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Price must be greater than 0");
+        }
+        if (matchedQuantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than 0.");
+        }
+
+        Order current = getOrderByIdOrNull(orderId);
+        if (current == null) {
+            throw new IllegalArgumentException("Order not found");
+        }
+        if (!isPendingStatus(current.getStatus())) {
+            return cloneOrder(current);
+        }
+
+        int totalQuantity = safeInt(current.getQuantity());
+        int currentFilled = safeInt(current.getFilledQuantity());
+        int remaining = Math.max(0, totalQuantity - currentFilled);
+        int actualMatched = Math.min(remaining, matchedQuantity);
+        if (actualMatched <= 0) {
+            return cloneOrder(current);
+        }
+
+        BigDecimal oldAvg = current.getFilledAvgPrice() == null ? BigDecimal.ZERO : current.getFilledAvgPrice();
+        BigDecimal oldNotional = oldAvg.multiply(new BigDecimal(currentFilled));
+        BigDecimal newNotional = executionPrice.multiply(new BigDecimal(actualMatched));
+        int newFilled = currentFilled + actualMatched;
+        BigDecimal avgPrice = oldNotional.add(newNotional)
+                .divide(new BigDecimal(newFilled), 4, RoundingMode.HALF_UP);
+
+        current.setFilledQuantity(newFilled);
+        current.setFilledAvgPrice(avgPrice);
+        current.setStatus(newFilled >= totalQuantity ? STATUS_FILLED : STATUS_PARTIAL_FILLED);
+        current.setUpdateTime(nowInHkDateTime());
+
+        boolean updated = this.updateById(current);
+        if (!updated) {
+            throw new IllegalStateException("Persist matched order failed.");
+        }
+        String orderType = safeOrderType(current.getOrderType());
+        if (accountLedgerService != null) {
+            int lotSize = mockDataService.getLotSize(current.getStockCode());
+            int lots = Math.max(1, actualMatched / Math.max(1, lotSize));
+            BigDecimal matchedAmount = executionPrice.multiply(new BigDecimal(actualMatched)).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal fee = feeCalculator.calculateTotalFee(matchedAmount, safeInt(current.getType()) == TYPE_BUY, lots);
+            accountLedgerService.onOrderMatched(
+                    current,
+                    orderType,
+                    actualMatched,
+                    executionPrice,
+                    fee,
+                    nowInHkDateTime(),
+                    calculateSettlementDate(nowInHkDateTime().toLocalDate())
+            );
+        }
+        return cloneOrder(current);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int closeExpiredLimitOrders(LocalDateTime triggerTime) {
+        LocalDateTime effectiveTrigger = triggerTime == null ? nowInHkDateTime() : triggerTime;
+        if (!isAfterMarketClose(effectiveTrigger)) {
+            return 0;
+        }
+
+        int canceled = 0;
+        for (Order order : listOpenOrders()) {
+            if (order == null || !isPendingStatus(order.getStatus())) {
+                continue;
+            }
+            if (!isLimitOrder(order)) {
+                continue;
+            }
+            if (!isLimitOrderExpired(order, effectiveTrigger)) {
+                continue;
+            }
+
+            Order canceledOrder = cloneOrder(order);
+            canceledOrder.setStatus(STATUS_CANCELED);
+            canceledOrder.setUpdateTime(effectiveTrigger);
+                boolean updated = this.updateById(canceledOrder);
+                if (!updated) {
+                    throw new IllegalStateException("Persist close cleanup failed.");
+                }
+            if (accountLedgerService != null) {
+                accountLedgerService.releaseOnOrderCanceled(canceledOrder, safeOrderType(canceledOrder.getOrderType()));
+            }
+            canceled++;
+        }
+        return canceled;
     }
 
     private ValidationContext validateAndBuildContext(String userId, TradeOrderCreateRequest request) {
@@ -300,6 +457,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (userId == null || userId.trim().isEmpty()) {
             throw new IllegalArgumentException("User ID cannot be blank.");
         }
+        closeExpiredLimitOrders(nowInHkDateTime());
 
         String stockCode = request.getStockCode();
         if (stockCode == null || stockCode.trim().isEmpty()) {
@@ -393,6 +551,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     private int resolveAvailableHoldings(String userId, String stockCode) {
+        if (accountLedgerService != null) {
+            int tradable = accountLedgerService.getTradableQuantity(userId, stockCode);
+            if (tradable > 0 || accountLedgerService.hasPositionRecord(userId, stockCode)) {
+                return tradable;
+            }
+        }
         int net = 0;
         for (Order order : listOrdersByUser(userId)) {
             if (order == null || !stockCode.equals(order.getStockCode())) {
@@ -448,7 +612,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     private boolean isLimitOrder(Order order) {
-        return "LIMIT".equalsIgnoreCase(getOrderType(order.getId()));
+        return "LIMIT".equalsIgnoreCase(safeOrderType(order == null ? null : order.getOrderType()));
     }
 
     private void validateTradingWindow(String orderType, TradingWindowContext tradingWindowContext) {
@@ -500,11 +664,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     private LocalDate nextTradingDay(LocalDate date) {
-        LocalDate current = date;
-        while (!isTradingDay(current)) {
-            current = current.plusDays(1);
-        }
-        return current;
+        return tradingCalendarService.nextTradingDay(date);
     }
 
     private boolean isTradingSession(ZonedDateTime dateTime) {
@@ -518,32 +678,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     private boolean isTradingDay(LocalDate date) {
-        DayOfWeek dayOfWeek = date.getDayOfWeek();
-        return dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY;
+        return tradingCalendarService.isTradingDay(date);
     }
 
     private List<Order> listOrdersByUser(String userId) {
-        Map<String, Order> merged = new HashMap<>();
-        try {
-            List<Order> dbOrders = this.list(new QueryWrapper<Order>().eq("user_id", userId));
-            if (dbOrders != null) {
-                for (Order order : dbOrders) {
-                    merged.put(order.getId(), cloneOrder(order));
-                }
-            }
-        } catch (Exception e) {
-            log.warn("List orders from db failed, fallback to in-memory only. reason={}", e.getMessage());
-        }
-
-        for (Order order : localOrderStore.values()) {
-            if (userId.equals(order.getUserId())) {
-                merged.put(order.getId(), cloneOrder(order));
-            }
-        }
-
-        List<Order> result = new ArrayList<Order>(merged.values());
+        List<Order> result = this.list(new QueryWrapper<Order>().eq("user_id", userId));
         result.sort(Comparator.comparing(Order::getCreateTime, Comparator.nullsLast(LocalDateTime::compareTo)).reversed());
         return result;
+    }
+
+    private List<Order> listOpenOrders() {
+        return this.list(new QueryWrapper<Order>()
+                .in("status", STATUS_PENDING, STATUS_PARTIAL_FILLED));
     }
 
     private boolean matchDateRange(Order order, LocalDate dateFrom, LocalDate dateTo) {
@@ -558,23 +704,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     private Order getOrderByIdOrNull(String orderId) {
-        try {
-            Order dbOrder = this.getById(orderId);
-            if (dbOrder != null) {
-                return dbOrder;
-            }
-        } catch (Exception e) {
-            log.warn("Get order from db failed, fallback to in-memory only. orderId={}, reason={}",
-                    orderId, e.getMessage());
-        }
-        return localOrderStore.get(orderId);
-    }
-
-    private void saveToLocalStore(Order order, String orderType) {
-        localOrderStore.put(order.getId(), cloneOrder(order));
-        if (orderType != null) {
-            orderTypeStore.put(order.getId(), orderType);
-        }
+        return this.getById(orderId);
     }
 
     private int parseDirection(String direction) {
@@ -597,8 +727,19 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         throw new IllegalArgumentException("Order type must be LIMIT or MARKET");
     }
 
+    private String safeOrderType(String orderType) {
+        if ("MARKET".equalsIgnoreCase(orderType)) {
+            return "MARKET";
+        }
+        return "LIMIT";
+    }
+
     private int safeInt(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    private LocalDateTime nowInHkDateTime() {
+        return ZonedDateTime.now(tradingClock).withZoneSameInstant(HK_ZONE).toLocalDateTime();
     }
 
     private void applyInitialExecution(Order order, ValidationContext context) {
@@ -622,13 +763,170 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if ("MARKET".equals(context.orderType)) {
             return true;
         }
-        if (!context.tradableNow) {
+        if (!Boolean.TRUE.equals(context.tradableNow)) {
+            return false;
+        }
+        if (context.effectivePrice == null || context.currentPrice == null) {
             return false;
         }
         if (context.type == TYPE_BUY) {
             return context.effectivePrice.compareTo(context.currentPrice) >= 0;
         }
         return context.effectivePrice.compareTo(context.currentPrice) <= 0;
+    }
+
+    private void ensureUniqueSubmission(String signature) {
+        if (tryAcquireSubmissionInRedis(signature)) {
+            return;
+        }
+        ensureUniqueSubmissionInMemory(signature);
+    }
+
+    private boolean tryAcquireSubmissionInRedis(String signature) {
+        if (stringRedisTemplate == null) {
+            return false;
+        }
+        try {
+            Boolean created = stringRedisTemplate.opsForValue().setIfAbsent(
+                    REDIS_SUBMISSION_KEY_PREFIX + signature,
+                    "1",
+                    DUPLICATE_WINDOW_MS,
+                    TimeUnit.MILLISECONDS
+            );
+            if (Boolean.TRUE.equals(created)) {
+                return true;
+            }
+            throw new IllegalArgumentException("Duplicate order submission detected. Please try again later.");
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.warn("Redis dedup unavailable, fallback to in-memory dedup. reason={}", ex.getMessage());
+            return false;
+        }
+    }
+
+    private void ensureUniqueSubmissionInMemory(String signature) {
+        long now = System.currentTimeMillis();
+        Long previous = submissionTracker.get(signature);
+        if (previous != null && now - previous < DUPLICATE_WINDOW_MS) {
+            throw new IllegalArgumentException("Duplicate order submission detected. Please try again later.");
+        }
+        submissionTracker.put(signature, now);
+    }
+
+    private String buildSubmissionSignature(String userId, ValidationContext context) {
+        String price = context.effectivePrice == null
+                ? "0"
+                : context.effectivePrice.stripTrailingZeros().toPlainString();
+        return String.join("|", userId, context.stockCode, context.direction, context.orderType, price, String.valueOf(context.quantity));
+    }
+
+    private String buildIdempotencyFingerprint(TradeOrderCreateRequest request) {
+        if (request == null) {
+            return "null";
+        }
+        String stockCode = request.getStockCode() == null ? "" : request.getStockCode().trim().toUpperCase(Locale.ROOT);
+        String direction = request.getDirection() == null ? "" : request.getDirection().trim().toUpperCase(Locale.ROOT);
+        String orderType = request.getOrderType() == null ? "" : request.getOrderType().trim().toUpperCase(Locale.ROOT);
+        String quantity = request.getQuantity() == null ? "0" : String.valueOf(request.getQuantity());
+        String price = request.getPrice() == null
+                ? "0"
+                : request.getPrice().stripTrailingZeros().toPlainString();
+        return String.join("|", stockCode, direction, orderType, quantity, price);
+    }
+
+    private String normalizeIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null) {
+            return null;
+        }
+        String trimmed = idempotencyKey.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.length() > 128) {
+            throw new IllegalArgumentException("Idempotency key length must be <= 128.");
+        }
+        return trimmed;
+    }
+
+    private SubmissionIdempotencyRecord loadIdempotencyRecord(String redisKey) {
+        SubmissionIdempotencyRecord local = localIdempotencyTracker.get(redisKey);
+        if (local != null) {
+            if (local.isExpired()) {
+                localIdempotencyTracker.remove(redisKey);
+                local = null;
+            } else {
+                return local;
+            }
+        }
+        if (stringRedisTemplate == null) {
+            return local;
+        }
+        try {
+            String raw = stringRedisTemplate.opsForValue().get(redisKey);
+            if (raw == null || raw.trim().isEmpty()) {
+                return null;
+            }
+            SubmissionIdempotencyRecord parsed = parseIdempotencyRecord(raw);
+            if (parsed != null && !parsed.isExpired()) {
+                localIdempotencyTracker.put(redisKey, parsed);
+            } else if (parsed != null) {
+                localIdempotencyTracker.remove(redisKey);
+                return null;
+            }
+            return parsed;
+        } catch (Exception ex) {
+            log.warn("Load idempotency record from redis failed, fallback to local cache. reason={}", ex.getMessage());
+            return null;
+        }
+    }
+
+    private void storeIdempotencyRecord(String redisKey, SubmissionIdempotencyRecord record) {
+        if (record == null) {
+            return;
+        }
+        localIdempotencyTracker.put(redisKey, record);
+        if (stringRedisTemplate == null) {
+            return;
+        }
+        try {
+            String payload = writeIdempotencyRecord(record);
+            stringRedisTemplate.opsForValue().set(redisKey, payload, IDEMPOTENCY_TTL_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception ex) {
+            log.warn("Persist idempotency record to redis failed, keep local cache only. reason={}", ex.getMessage());
+        }
+    }
+
+    private void ensureSamePayload(SubmissionIdempotencyRecord record, String fingerprint) {
+        if (record == null) {
+            return;
+        }
+        if (record.requestFingerprint != null && !record.requestFingerprint.equals(fingerprint)) {
+            throw new IllegalArgumentException("Idempotency key is already used with different request payload.");
+        }
+    }
+
+    private String writeIdempotencyRecord(SubmissionIdempotencyRecord record) {
+        if (objectMapper == null) {
+            throw new IllegalStateException("ObjectMapper is unavailable.");
+        }
+        try {
+            return objectMapper.writeValueAsString(record);
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Serialize idempotency record failed.", ex);
+        }
+    }
+
+    private SubmissionIdempotencyRecord parseIdempotencyRecord(String raw) {
+        if (objectMapper == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(raw, SubmissionIdempotencyRecord.class);
+        } catch (Exception ex) {
+            log.warn("Parse idempotency record failed, ignore stale redis payload. reason={}", ex.getMessage());
+            return null;
+        }
     }
 
     private String mapStatus(Integer status) {
@@ -648,13 +946,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         return "REJECTED";
     }
 
-    private Order buildPendingOrder(String userId, String stockCode, int type, BigDecimal price, int quantity) {
-        LocalDateTime now = LocalDateTime.now();
+    private Order buildPendingOrder(String userId, String stockCode, int type, String orderType, BigDecimal price, int quantity) {
+        LocalDateTime now = nowInHkDateTime();
         Order order = new Order();
         order.setId(UUID.randomUUID().toString());
         order.setUserId(userId);
         order.setStockCode(stockCode);
         order.setType(type);
+        order.setOrderType(safeOrderType(orderType));
         order.setPrice(price);
         order.setQuantity(quantity);
         order.setFilledQuantity(0);
@@ -665,6 +964,66 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         return order;
     }
 
+    private void applyLedgerAfterOrderAccepted(Order order, ValidationContext context) {
+        if (accountLedgerService == null || order == null || context == null) {
+            return;
+        }
+        if (safeInt(order.getStatus()) == STATUS_PENDING) {
+            BigDecimal estimateAmount = context.effectivePrice
+                    .multiply(new BigDecimal(context.quantity))
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal estimateFee = feeCalculator.calculateTotalFee(
+                    estimateAmount,
+                    context.type == TYPE_BUY,
+                    context.lots
+            );
+            accountLedgerService.reserveForPendingOrder(order, context.orderType, estimateFee);
+            return;
+        }
+        if (safeInt(order.getStatus()) == STATUS_FILLED) {
+            BigDecimal matchedAmount = context.currentPrice
+                    .multiply(new BigDecimal(context.quantity))
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal fee = feeCalculator.calculateTotalFee(
+                    matchedAmount,
+                    context.type == TYPE_BUY,
+                    context.lots
+            );
+            accountLedgerService.onOrderMatched(
+                    order,
+                    context.orderType,
+                    context.quantity,
+                    context.currentPrice,
+                    fee,
+                    nowInHkDateTime(),
+                    calculateSettlementDate(nowInHkDateTime().toLocalDate())
+            );
+        }
+    }
+
+    private LocalDate calculateSettlementDate(LocalDate tradeDate) {
+        return tradingCalendarService.addTradingDays(tradeDate, 2);
+    }
+
+    private boolean isAfterMarketClose(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return false;
+        }
+        if (!isTradingDay(dateTime.toLocalDate())) {
+            return false;
+        }
+        return !dateTime.toLocalTime().isBefore(MARKET_CLOSE);
+    }
+
+    private boolean isLimitOrderExpired(Order order, LocalDateTime triggerTime) {
+        if (order == null || order.getCreateTime() == null || triggerTime == null) {
+            return false;
+        }
+        ZonedDateTime creation = order.getCreateTime().atZone(HK_ZONE);
+        ZonedDateTime validUntil = resolveLimitOrderValidUntil(creation, isTradingSession(creation));
+        return !triggerTime.atZone(HK_ZONE).isBefore(validUntil);
+    }
+
     private Order cloneOrder(Order source) {
         Order target = new Order();
         target.setId(source.getId());
@@ -672,6 +1031,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         target.setStockCode(source.getStockCode());
         target.setType(source.getType());
         target.setPrice(source.getPrice());
+        target.setOrderType(source.getOrderType());
         target.setQuantity(source.getQuantity());
         target.setFilledQuantity(source.getFilledQuantity());
         target.setFilledAvgPrice(source.getFilledAvgPrice());
@@ -679,6 +1039,121 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         target.setCreateTime(source.getCreateTime());
         target.setUpdateTime(source.getUpdateTime());
         return target;
+    }
+
+    private static class SubmissionIdempotencyRecord {
+        private String requestFingerprint;
+        private String orderId;
+        private String status;
+        private Boolean tradableNow;
+        private String validityType;
+        private String validUntil;
+        private String validityNote;
+        private Long createdAtEpochMs;
+
+        public SubmissionIdempotencyRecord() {
+        }
+
+        private static SubmissionIdempotencyRecord from(String requestFingerprint, TradeOrderSubmitResult result) {
+            SubmissionIdempotencyRecord record = new SubmissionIdempotencyRecord();
+            record.requestFingerprint = requestFingerprint;
+            record.orderId = result.getOrderId();
+            record.status = result.getStatus();
+            record.tradableNow = result.getTradableNow();
+            record.validityType = result.getValidityType();
+            record.validUntil = result.getValidUntil();
+            record.validityNote = result.getValidityNote();
+            record.createdAtEpochMs = System.currentTimeMillis();
+            return record;
+        }
+
+        private TradeOrderSubmitResult toSubmitResult() {
+            TradeOrderSubmitResult result = new TradeOrderSubmitResult();
+            result.setOrderId(orderId);
+            result.setStatus(status);
+            result.setTradableNow(tradableNow);
+            result.setValidityType(validityType);
+            result.setValidUntil(validUntil);
+            result.setValidityNote(validityNote);
+            result.setSuccessActions(Arrays.asList(
+                    "VIEW_ACTIVE_ORDERS",
+                    "TRADE_AGAIN",
+                    "OPEN_QUOTE",
+                    "BACK_HOME"
+            ));
+            return result;
+        }
+
+        public String getRequestFingerprint() {
+            return requestFingerprint;
+        }
+
+        public void setRequestFingerprint(String requestFingerprint) {
+            this.requestFingerprint = requestFingerprint;
+        }
+
+        public String getOrderId() {
+            return orderId;
+        }
+
+        public void setOrderId(String orderId) {
+            this.orderId = orderId;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public Boolean getTradableNow() {
+            return tradableNow;
+        }
+
+        public void setTradableNow(Boolean tradableNow) {
+            this.tradableNow = tradableNow;
+        }
+
+        public String getValidityType() {
+            return validityType;
+        }
+
+        public void setValidityType(String validityType) {
+            this.validityType = validityType;
+        }
+
+        public String getValidUntil() {
+            return validUntil;
+        }
+
+        public void setValidUntil(String validUntil) {
+            this.validUntil = validUntil;
+        }
+
+        public String getValidityNote() {
+            return validityNote;
+        }
+
+        public void setValidityNote(String validityNote) {
+            this.validityNote = validityNote;
+        }
+
+        public Long getCreatedAtEpochMs() {
+            return createdAtEpochMs;
+        }
+
+        public void setCreatedAtEpochMs(Long createdAtEpochMs) {
+            this.createdAtEpochMs = createdAtEpochMs;
+        }
+
+        private boolean isExpired() {
+            if (createdAtEpochMs == null || createdAtEpochMs <= 0L) {
+                return false;
+            }
+            return System.currentTimeMillis() - createdAtEpochMs > IDEMPOTENCY_TTL_SECONDS * 1000L;
+        }
     }
 
     private static class ValidationContext {

@@ -8,6 +8,10 @@ import java.util.List;
 public class MarketData {
     private String stockCode;
     private Long timestamp;
+    // Nominal price from quote push, preferred for matching
+    private BigDecimal nominalPrice;
+    // Optional last traded price fallback
+    private BigDecimal lastPrice;
     
     // Ask/Offer Book data
     private List<Level> asks; // Sell orders

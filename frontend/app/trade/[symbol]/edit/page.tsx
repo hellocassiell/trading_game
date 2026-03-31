@@ -7,6 +7,7 @@ type TradeEditPageProps = {
 
 export default async function TradeEditPage({ params }: TradeEditPageProps) {
   const { symbol } = await params;
+  const product = await getTradeProductViewModel(symbol);
 
-  return <TradeEditPreview product={getTradeProductViewModel(symbol)} />;
+  return <TradeEditPreview product={product} />;
 }

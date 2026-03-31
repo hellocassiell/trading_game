@@ -20,6 +20,7 @@ public class Order {
     private Integer type;
     
     private BigDecimal price;
+    private String orderType;
     private Integer quantity;
     private Integer filledQuantity;
     private BigDecimal filledAvgPrice;

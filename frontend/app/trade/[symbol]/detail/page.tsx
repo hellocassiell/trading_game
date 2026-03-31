@@ -1,5 +1,4 @@
-import { TradeDetailPreview } from "../../../../components/PrototypeStates";
-import { getTradeProductViewModel } from "../../../../lib/adapters/trade";
+import RealtimeQuoteDetail from "../../../../components/RealtimeQuoteDetail";
 
 type TradeDetailPreviewPageProps = {
   params: Promise<{ symbol: string }>;
@@ -10,5 +9,5 @@ export default async function TradeDetailPreviewPage({
 }: TradeDetailPreviewPageProps) {
   const { symbol } = await params;
 
-  return <TradeDetailPreview product={getTradeProductViewModel(symbol)} />;
+  return <RealtimeQuoteDetail symbol={symbol} />;
 }

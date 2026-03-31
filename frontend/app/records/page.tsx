@@ -13,6 +13,8 @@ import {
   mapOrderToRecordCard,
   type StatusFilter,
 } from "../../lib/adapters/records";
+import { byLanguage } from "../../lib/locale";
+import { useLanguage } from "../../components/LanguageProvider";
 
 type RecordTab = "status" | "history";
 type LoadState = "loading" | "success" | "empty" | "error";
@@ -41,31 +43,16 @@ function sideBadgeTone(side: string) {
     : "bg-[#edf8f1] text-[var(--app-green)]";
 }
 
-function statusLabel(status: ActiveOrder["status"] | TradeHistoryItem["status"]) {
-  if (status === "PENDING" || status === "PARTIAL_FILLED") {
-    return "排队中";
-  }
-  if (status === "FILLED") {
-    return "已成交";
-  }
-  if (status === "CANCELED") {
-    return "已取消";
-  }
-  return "已拒绝";
-}
-
-function directionLabel(direction: ActiveOrder["direction"] | TradeHistoryItem["direction"]) {
-  return direction === "BUY" ? "买入" : "卖出";
-}
-
 type RecordCardItem = ReturnType<typeof mapOrderToRecordCard>;
 
 function OrderCard({
   item,
   showHint,
+  copy,
 }: {
   item: RecordCardItem;
   showHint: boolean;
+  copy: Record<string, string>;
 }) {
   return (
     <div className="grid grid-cols-[1fr_120px] gap-3">
@@ -76,17 +63,17 @@ function OrderCard({
         </div>
         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
           <p className="text-label text-[#9e9081]">
-            落盘价位 <span className="ml-1 font-black text-[#3f3932]">{item.price}</span>
+            {copy.orderPrice} <span className="ml-1 font-black text-[#3f3932]">{item.price}</span>
           </p>
           <p className="text-label text-[#9e9081]">
-            落盘股数 <span className="ml-1 font-black text-[#3f3932]">{item.quantity}</span>
+            {copy.orderQty} <span className="ml-1 font-black text-[#3f3932]">{item.quantity}</span>
           </p>
         </div>
         <p className="text-label mt-1 text-[#9e9081]">
-          落单时间 <span className="ml-1 font-semibold text-[#6a5a49]">{item.time}</span>
+          {copy.orderTime} <span className="ml-1 font-semibold text-[#6a5a49]">{item.time}</span>
         </p>
         <p className="text-label mt-1 truncate text-[#9e9081]">
-          交易编号 <span className="ml-1 font-black text-[#3f3932]">{item.orderId}</span>
+          {copy.orderId} <span className="ml-1 font-black text-[#3f3932]">{item.orderId}</span>
         </p>
       </div>
 
@@ -95,21 +82,27 @@ function OrderCard({
           <span
             className={`text-label rounded-full px-2.5 py-1 font-black ${sideBadgeTone(item.direction)}`}
           >
-            {directionLabel(item.direction)}
+            {item.direction === "BUY" ? copy.buy : copy.sell}
           </span>
           <span
             className={`text-label rounded-full px-2.5 py-1 font-black ${formatStatusTone(item.status)}`}
           >
-            {statusLabel(item.status)}
+            {item.status === "PENDING" || item.status === "PARTIAL_FILLED"
+              ? copy.pending
+              : item.status === "FILLED"
+                ? copy.filled
+                : item.status === "CANCELED"
+                  ? copy.canceled
+                  : copy.rejected}
           </span>
         </div>
         <div className="mt-2 text-right">
-          <p className="text-label text-[#9e9081]">成交股数</p>
+          <p className="text-label text-[#9e9081]">{copy.dealtQty}</p>
           <p className={`text-body font-black ${sideTone(item.direction)}`}>{item.dealt}</p>
         </div>
         {showHint ? (
           <div className="mt-2 inline-flex items-center gap-1 text-label text-[#c4b6a7]">
-            <span>查看详情</span>
+            <span>{copy.viewDetail}</span>
             <ChevronRight className="h-4 w-4" />
           </div>
         ) : null}
@@ -119,6 +112,85 @@ function OrderCard({
 }
 
 export default function RecordsPage() {
+  const { language } = useLanguage();
+  const copy = byLanguage(language, {
+    "zh-Hant": {
+      cancelSuccess: "取消訂單成功",
+      amendSuccess: "改單成功",
+      submitSuccess: "下單成功",
+      tabStatus: "交易狀況",
+      tabHistory: "交易記錄",
+      currency: "貨幣 (港幣)",
+      loadError: "讀取交易數據失敗",
+      reload: "重新載入",
+      empty: "暫無港股交易記錄",
+      emptyHint: "完成下單後可在此查看狀態與歷史",
+      all: "全部",
+      pending: "排隊中",
+      filled: "已成交",
+      canceled: "已取消",
+      rejected: "已拒絕",
+      buy: "買入",
+      sell: "賣出",
+      orderPrice: "落盤價位",
+      orderQty: "落盤股數",
+      orderTime: "落單時間",
+      orderId: "交易編號",
+      dealtQty: "成交股數",
+      viewDetail: "查看詳情",
+    },
+    "zh-Hans": {
+      cancelSuccess: "取消订单成功",
+      amendSuccess: "改单成功",
+      submitSuccess: "下单成功",
+      tabStatus: "交易状况",
+      tabHistory: "交易记录",
+      currency: "货币 (港币)",
+      loadError: "读取交易数据失败",
+      reload: "重新载入",
+      empty: "暂无港股交易记录",
+      emptyHint: "完成下单后可在此查看状态与历史",
+      all: "全部",
+      pending: "排队中",
+      filled: "已成交",
+      canceled: "已取消",
+      rejected: "已拒绝",
+      buy: "买入",
+      sell: "卖出",
+      orderPrice: "落盘价位",
+      orderQty: "落盘股数",
+      orderTime: "落单时间",
+      orderId: "交易编号",
+      dealtQty: "成交股数",
+      viewDetail: "查看详情",
+    },
+    en: {
+      cancelSuccess: "Order canceled",
+      amendSuccess: "Order amended",
+      submitSuccess: "Order submitted",
+      tabStatus: "Trading Status",
+      tabHistory: "Trade History",
+      currency: "Currency (HKD)",
+      loadError: "Failed to load trade data",
+      reload: "Reload",
+      empty: "No HK trade records",
+      emptyHint: "Order status and history appear here after trading",
+      all: "All",
+      pending: "Pending",
+      filled: "Filled",
+      canceled: "Canceled",
+      rejected: "Rejected",
+      buy: "Buy",
+      sell: "Sell",
+      orderPrice: "Order Price",
+      orderQty: "Order Qty",
+      orderTime: "Order Time",
+      orderId: "Order ID",
+      dealtQty: "Filled Qty",
+      viewDetail: "View Detail",
+    },
+  });
+
   const [activeTab, setActiveTab] = useState<RecordTab>("status");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
@@ -163,17 +235,17 @@ export default function RecordsPage() {
     const listener = (event: Event) => {
       const customEvent = event as CustomEvent<{ type?: string; message?: string }>;
       if (customEvent.detail?.type === "cancel_success") {
-        setToastMessage(customEvent.detail.message || "取消订单成功");
+        setToastMessage(customEvent.detail.message || copy.cancelSuccess);
       } else if (customEvent.detail?.type === "amend_success") {
-        setToastMessage(customEvent.detail.message || "改单成功");
+        setToastMessage(customEvent.detail.message || copy.amendSuccess);
       } else if (customEvent.detail?.type === "submit_success") {
-        setToastMessage(customEvent.detail.message || "下单成功");
+        setToastMessage(customEvent.detail.message || copy.submitSuccess);
       }
       setRefreshKey((current) => current + 1);
     };
     window.addEventListener("trade-order-updated", listener);
     return () => window.removeEventListener("trade-order-updated", listener);
-  }, []);
+  }, [copy]);
 
   useEffect(() => {
     if (!toastMessage) {
@@ -216,7 +288,7 @@ export default function RecordsPage() {
                 activeTab === "status" ? "text-[#ffe26f]" : "text-[#ffd5a0]"
               }`}
             >
-              交易状况
+              {copy.tabStatus}
               {activeTab === "status" ? (
                 <span className="absolute bottom-0 left-1/2 h-[3px] w-20 -translate-x-1/2 rounded-full bg-[#ffe26f]" />
               ) : null}
@@ -228,7 +300,7 @@ export default function RecordsPage() {
                 activeTab === "history" ? "text-[#ffe26f]" : "text-[#ffd5a0]"
               }`}
             >
-              交易记录
+              {copy.tabHistory}
               {activeTab === "history" ? (
                 <span className="absolute bottom-0 left-1/2 h-[3px] w-20 -translate-x-1/2 rounded-full bg-[#ffe26f]" />
               ) : null}
@@ -239,7 +311,7 @@ export default function RecordsPage() {
         <div className="border-b border-[#efe5d8] px-4 py-2.5">
           <div className="text-helper flex items-center gap-1 font-black text-[#8f7a66]">
             <span>🇭🇰</span>
-            <span>货币 (港币)</span>
+            <span>{copy.currency}</span>
           </div>
         </div>
 
@@ -251,28 +323,28 @@ export default function RecordsPage() {
           </div>
         ) : loadState === "error" ? (
           <div className="px-4 py-10 text-center">
-            <p className="text-body font-semibold text-[#8f7a66]">读取交易数据失败</p>
+            <p className="text-body font-semibold text-[#8f7a66]">{copy.loadError}</p>
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="btn-primary mt-4 px-4"
             >
-              重新载入
+              {copy.reload}
             </button>
           </div>
         ) : loadState === "empty" ? (
           <div className="px-4 py-10 text-center">
-            <p className="text-body font-semibold text-[#8f7a66]">暂无港股交易记录</p>
-            <p className="text-helper mt-1 text-[#b39a80]">完成下单后可在此查看状态与历史</p>
+            <p className="text-body font-semibold text-[#8f7a66]">{copy.empty}</p>
+            <p className="text-helper mt-1 text-[#b39a80]">{copy.emptyHint}</p>
           </div>
         ) : activeTab === "status" ? (
           <>
             <div className="border-b border-[#efe5d8] px-4 py-3">
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { key: "all", label: "全部" },
-                  { key: "pending", label: "排队中" },
-                  { key: "done", label: "已成交" },
+                  { key: "all", label: copy.all },
+                  { key: "pending", label: copy.pending },
+                  { key: "done", label: copy.filled },
                 ].map((item) => (
                   <button
                     key={item.key}
@@ -300,7 +372,7 @@ export default function RecordsPage() {
                   orderStatus={item.status}
                   className="mx-3 my-2 block rounded-[14px] border border-[#f1e6d8] bg-[#fffdf9] px-3 py-3 text-left active:bg-[#fffaf3]"
                 >
-                  <OrderCard item={item} showHint />
+                  <OrderCard item={item} showHint copy={copy} />
                 </TradeTrigger>
               ))}
             </div>
@@ -319,7 +391,7 @@ export default function RecordsPage() {
                       key={`${item.symbol}-${item.time}-${item.orderId}`}
                       className="mx-3 my-2 rounded-[14px] border border-[#f1e6d8] bg-[#fffdf9] px-3 py-3"
                     >
-                      <OrderCard item={item} showHint={false} />
+                      <OrderCard item={item} showHint={false} copy={copy} />
                     </div>
                   ))}
                 </div>

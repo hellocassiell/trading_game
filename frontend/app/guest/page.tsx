@@ -9,10 +9,18 @@ import {
   readAuthSession,
   type AuthSession,
 } from "../../lib/adapters/auth";
+import { byLanguage } from "../../lib/locale";
+import { useLanguage } from "../../components/LanguageProvider";
 
 export default function GuestPage() {
+  const { language } = useLanguage();
   const viewModel = getGuestLandingViewModel();
   const blockedViewModel = getBlockedViewModel();
+  const copy = byLanguage(language, {
+    "zh-Hant": { continueGame: "繼續比賽", identified: "已識別參賽者" },
+    "zh-Hans": { continueGame: "继续比赛", identified: "已识别参赛者" },
+    en: { continueGame: "Continue", identified: "Recognized player" },
+  });
   const [session, setSession] = useState<AuthSession | null>(null);
   const [showBlocked, setShowBlocked] = useState(false);
 
@@ -29,7 +37,7 @@ export default function GuestPage() {
   }, []);
 
   const primaryAction = session
-    ? { label: "继续比赛", href: "/" }
+    ? { label: copy.continueGame, href: "/" }
     : viewModel.primaryAction;
 
   return (
@@ -111,7 +119,7 @@ export default function GuestPage() {
 
           {session ? (
             <p className="mt-3 text-center text-[12px] text-[#8a8a8a]">
-              已识别参赛者 {session.nickname}
+              {copy.identified} {session.nickname}
             </p>
           ) : null}
 

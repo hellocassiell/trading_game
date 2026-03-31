@@ -43,7 +43,7 @@ cd backend
 Notes:
 
 - The repository also contains `schema.sql`, which models a broader target schema.
-- The current runnable code persists to `t_order`, so `init-local-db.sh` creates the minimal table shape required by the existing `Order` entity and mapper.
+- The current runnable code persists to `t_order` and `t_user_profile`, so `init-local-db.sh` creates the minimal table shape required by the existing entities and mappers.
 
 ## Start the backend
 
@@ -95,6 +95,60 @@ Verify data reached MySQL:
 ```bash
 mysql -u root -ppassword -D simtrade -e "SELECT id,user_id,stock_code,type,status,create_time FROM t_order ORDER BY create_time DESC LIMIT 5;"
 ```
+
+## Demo deployment
+
+This repository now supports two demo paths:
+
+- primary: `Vercel frontend + local backend + HTTPS tunnel`
+- fallback: single-host Docker deployment on a VPS
+
+### Included files
+
+- `../frontend/Dockerfile`
+- `backend/Dockerfile`
+- `src/main/resources/application-prod.yml`
+- `../deploy/docker-compose.demo.yml`
+- `../deploy/env/backend.demo.env.example`
+- `../deploy/nginx/demo.conf`
+- `../deploy/sql/init-demo.sql`
+- `../deploy/scripts/deploy-demo.sh`
+- `../deploy/scripts/smoke-test.sh`
+
+### Primary demo path
+
+```bash
+cd backend
+./run-local.sh
+```
+
+Expose local `8080` through an HTTPS tunnel, then set Vercel env vars:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=https://<your-https-tunnel-domain>
+NEXT_PUBLIC_DEMO_USER_ID=u_10001
+```
+
+### Fallback VPS path
+
+```bash
+cp deploy/env/backend.demo.env.example deploy/env/backend.demo.env
+chmod +x deploy/scripts/deploy-demo.sh deploy/scripts/smoke-test.sh
+./deploy/scripts/deploy-demo.sh
+```
+
+### Smoke tests
+
+```bash
+curl --noproxy '*' http://127.0.0.1:8080/api/v1/home/overview
+API_BASE_URL=http://<your-server-public-ip> ./deploy/scripts/smoke-test.sh
+```
+
+### Demo notes
+
+- Vercel pages are HTTPS, so the backend must be exposed through an HTTPS tunnel
+- `NEXT_PUBLIC_API_BASE_URL` must be an absolute `https://...` URL when using Vercel
+- The single-host Docker path is kept as a fallback for later Tencent Cloud or VPS deployment
 
 ## Current API status
 

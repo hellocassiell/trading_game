@@ -7,10 +7,17 @@ type StoredAuthSession = {
 };
 
 export function getApiBaseUrl() {
-  return (
-    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-    DEFAULT_API_BASE_URL
-  );
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, "");
+
+  if (configuredBaseUrl && /^https?:\/\//.test(configuredBaseUrl)) {
+    return configuredBaseUrl;
+  }
+
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, "");
+  }
+
+  return DEFAULT_API_BASE_URL;
 }
 
 function readStoredAuthSession(): StoredAuthSession | null {
@@ -26,12 +33,9 @@ function readStoredAuthSession(): StoredAuthSession | null {
   }
 }
 
-export function getDemoUserId() {
+export function getStoredUserId() {
   const session = readStoredAuthSession();
-  if (session?.userId) {
-    return session.userId;
-  }
-  return process.env.NEXT_PUBLIC_DEMO_USER_ID ?? "u_10001";
+  return session?.userId;
 }
 
 export function getAuthToken() {

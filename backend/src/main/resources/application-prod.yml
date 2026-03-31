@@ -1,0 +1,54 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/simtrade?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Hong_Kong}
+    username: ${SPRING_DATASOURCE_USERNAME:simtrade}
+    password: ${SPRING_DATASOURCE_PASSWORD:simtrade123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: ${SPRING_REDIS_HOST:redis}
+    port: ${SPRING_REDIS_PORT:6379}
+    password: ${SPRING_REDIS_PASSWORD:}
+    database: ${SPRING_REDIS_DATABASE:0}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+aob:
+  host: ${AOB_HOST:http://api.aob.example.com}
+  mq:
+    quote-queue: ${AOB_MQ_QUOTE_QUEUE:market.data.queue}
+  subscription:
+    enabled: ${AOB_SUBSCRIPTION_ENABLED:false}
+    exchange: ${AOB_SUBSCRIPTION_EXCHANGE:subscribe.exchange}
+    routing-key: ${AOB_SUBSCRIPTION_ROUTING_KEY:subscribe.key}
+    asset-ids: ${AOB_SUBSCRIPTION_ASSET_IDS:00700.HK,02800.HK,0388.HK,2800.HK}
+    command-code: ${AOB_SUBSCRIPTION_COMMAND_CODE:1}
+    market-type-hk: ${AOB_SUBSCRIPTION_MARKET_TYPE_HK:1}
+    quote-level-lv2: ${AOB_SUBSCRIPTION_QUOTE_LEVEL_LV2:2}
+    type: ${AOB_SUBSCRIPTION_TYPE:0}
+
+app:
+  cors:
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://*.vercel.app,http://localhost:*,http://127.0.0.1:*}
+  avatar:
+    upload-dir: ${APP_AVATAR_UPLOAD_DIR:/data/simtrade/avatars}
+
+trading:
+  hk-holidays: ${TRADING_HK_HOLIDAYS:2026-01-01,2026-02-17,2026-02-18,2026-04-03,2026-04-06,2026-05-01,2026-07-01,2026-10-01,2026-12-25}

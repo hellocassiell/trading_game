@@ -1,5 +1,6 @@
 package com.simtrade.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -27,4 +28,15 @@ public class TradeOrderPreviewResult {
     private String validUntil;
     private String validityNote;
     private List<String> successActions;
+    private String language;
+
+    @JsonProperty("lang")
+    public String getLang() {
+        return language;
+    }
+
+    @JsonProperty("lang")
+    public void setLang(String lang) {
+        this.language = lang;
+    }
 }

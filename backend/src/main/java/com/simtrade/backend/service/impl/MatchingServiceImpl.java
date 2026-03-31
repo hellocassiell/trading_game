@@ -1,11 +1,11 @@
 package com.simtrade.backend.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.simtrade.backend.dto.MarketData;
 import com.simtrade.backend.entity.Order;
 import com.simtrade.backend.service.FeeCalculator;
 import com.simtrade.backend.service.MatchingService;
 import com.simtrade.backend.service.OrderService;
+import com.simtrade.backend.service.TradingCalendarService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,13 +13,30 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 @Slf4j
 @Service
 public class MatchingServiceImpl implements MatchingService {
+
+    private static final int TYPE_BUY = 1;
+    private static final int TYPE_SELL = 2;
+    private static final int STATUS_PENDING = 0;
+    private static final int STATUS_PARTIAL_FILLED = 1;
+    private static final ZoneId HK_ZONE = ZoneId.of("Asia/Hong_Kong");
+    private static final LocalTime MORNING_OPEN = LocalTime.of(9, 30);
+    private static final LocalTime MORNING_CLOSE = LocalTime.of(12, 0);
+    private static final LocalTime AFTERNOON_OPEN = LocalTime.of(13, 0);
+    private static final LocalTime MARKET_CLOSE = LocalTime.of(16, 0);
 
     @Autowired
     private OrderService orderService;
@@ -27,127 +44,323 @@ public class MatchingServiceImpl implements MatchingService {
     @Autowired
     private FeeCalculator feeCalculator;
 
+    @Autowired(required = false)
+    private TradingCalendarService tradingCalendarService = new TradingCalendarService();
+
+    private Clock tradingClock = Clock.system(HK_ZONE);
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void matchOrders(MarketData marketData) {
-        String stockCode = marketData.getStockCode();
-        
-        // Fetch all pending and partially filled orders for this stock
-        List<Order> orders = orderService.list(new QueryWrapper<Order>()
-                .eq("stock_code", stockCode)
-                .in("status", 0, 1) // 0: Pending, 1: Partial Filled
-                .orderByAsc("create_time")); // Time priority
+        matchOrders(marketData, false);
+    }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void matchOrders(MarketData marketData, boolean ignoreTradingSession) {
+        if (marketData == null || marketData.getStockCode() == null || marketData.getStockCode().trim().isEmpty()) {
+            return;
+        }
+
+        LocalDateTime now = nowInHkDateTime();
+        orderService.closeExpiredLimitOrders(now);
+        if (!ignoreTradingSession && !isTradingSession(now.atZone(HK_ZONE))) {
+            return;
+        }
+
+        String stockCode = marketData.getStockCode();
+        List<Order> orders = orderService.listOpenOrdersByStock(stockCode);
         if (orders == null || orders.isEmpty()) {
             return;
         }
 
-        // 1. Process Buy Orders (matching against asks)
-        List<MarketData.Level> asks = marketData.getAsks();
-        if (asks != null && !asks.isEmpty()) {
-            asks.sort(Comparator.comparing(MarketData.Level::getPrice)); // Lowest ask first
-            
-            for (Order order : orders) {
-                if (order.getType() != 1) continue; // Only Buy Orders
-                
-                for (MarketData.Level ask : asks) {
-                    if (ask.getVolume() <= 0) continue;
-                    
-                    // Buy price >= Ask price (Can match)
-                    if (order.getPrice().compareTo(ask.getPrice()) >= 0) {
-                        int remainingQty = order.getQuantity() - order.getFilledQuantity();
-                        int matchQty = Math.min(remainingQty, ask.getVolume());
-                        
-                        if (matchQty > 0) {
-                            executeTrade(order, ask.getPrice(), matchQty);
-                            ask.setVolume(ask.getVolume() - matchQty);
-                        }
-                        
-                        if (order.getStatus() == 2) { // Fully filled
-                            break;
-                        }
-                    } else {
-                        // Ask prices are sorted ascending, so if this one is higher than buy price, next will be too
-                        break;
-                    }
-                }
-            }
+        if (hasOrderBookLiquidity(marketData)) {
+            matchAgainstOrderBook(orders, marketData, now);
+            return;
         }
 
-        // 2. Process Sell Orders (matching against bids)
-        List<MarketData.Level> bids = marketData.getBids();
-        if (bids != null && !bids.isEmpty()) {
-            bids.sort((a, b) -> b.getPrice().compareTo(a.getPrice())); // Highest bid first
-            
-            for (Order order : orders) {
-                if (order.getType() != 2) continue; // Only Sell Orders
-                
-                for (MarketData.Level bid : bids) {
-                    if (bid.getVolume() <= 0) continue;
-                    
-                    // Sell price <= Bid price (Can match)
-                    if (order.getPrice().compareTo(bid.getPrice()) <= 0) {
-                        int remainingQty = order.getQuantity() - order.getFilledQuantity();
-                        int matchQty = Math.min(remainingQty, bid.getVolume());
-                        
-                        if (matchQty > 0) {
-                            executeTrade(order, bid.getPrice(), matchQty);
-                            bid.setVolume(bid.getVolume() - matchQty);
-                        }
-                        
-                        if (order.getStatus() == 2) { // Fully filled
-                            break;
-                        }
-                    } else {
-                        // Bid prices are sorted descending, so if this one is lower than sell price, next will be too
-                        break;
-                    }
+        matchAtSinglePrice(orders, marketData, now);
+    }
+
+    private void matchAgainstOrderBook(List<Order> orders, MarketData marketData, LocalDateTime now) {
+        List<OrderExecutionState> buyQueue = buildExecutionQueue(orders, TYPE_BUY);
+        List<OrderExecutionState> sellQueue = buildExecutionQueue(orders, TYPE_SELL);
+        if (buyQueue.isEmpty() && sellQueue.isEmpty()) {
+            return;
+        }
+
+        List<MarketData.Level> asks = normalizeLevels(marketData.getAsks(), true);
+        List<MarketData.Level> bids = normalizeLevels(marketData.getBids(), false);
+        consumeLevels(asks, buyQueue, TYPE_BUY, now);
+        consumeLevels(bids, sellQueue, TYPE_SELL, now);
+    }
+
+    private void consumeLevels(List<MarketData.Level> levels,
+                               List<OrderExecutionState> queue,
+                               int side,
+                               LocalDateTime now) {
+        if (levels.isEmpty() || queue.isEmpty()) {
+            return;
+        }
+
+        for (MarketData.Level level : levels) {
+            if (level == null || level.getPrice() == null || level.getVolume() == null) {
+                continue;
+            }
+            if (level.getPrice().compareTo(BigDecimal.ZERO) <= 0 || level.getVolume() <= 0) {
+                continue;
+            }
+
+            int available = level.getVolume();
+            for (OrderExecutionState state : queue) {
+                if (available <= 0) {
+                    break;
                 }
+                if (state.remaining <= 0) {
+                    continue;
+                }
+                if (!isCrossedByBookLevel(side, state.limitPrice, level.getPrice())) {
+                    continue;
+                }
+
+                int requested = Math.min(available, state.remaining);
+                if (requested <= 0) {
+                    continue;
+                }
+                int beforeRemaining = state.remaining;
+                Order matched = orderService.applyMatchExecution(state.orderId, level.getPrice(), requested);
+                int afterRemaining = resolveRemaining(matched);
+                int matchedQty = Math.max(0, beforeRemaining - afterRemaining);
+                if (matchedQty <= 0) {
+                    continue;
+                }
+                state.remaining = afterRemaining;
+                available -= matchedQty;
+                logMatchedTrade(matched, level.getPrice(), matchedQty, now);
             }
         }
     }
 
-    private void executeTrade(Order order, BigDecimal execPrice, int matchQty) {
-        BigDecimal currentAvgPrice = order.getFilledAvgPrice() == null ? BigDecimal.ZERO : order.getFilledAvgPrice();
-        int currentFilledQty = order.getFilledQuantity() == null ? 0 : order.getFilledQuantity();
-        
-        BigDecimal totalOldValue = currentAvgPrice.multiply(new BigDecimal(currentFilledQty));
-        BigDecimal matchValue = execPrice.multiply(new BigDecimal(matchQty));
-        
-        int newFilledQty = currentFilledQty + matchQty;
-        BigDecimal newAvgPrice = totalOldValue.add(matchValue).divide(new BigDecimal(newFilledQty), 4, RoundingMode.HALF_UP);
-        
-        order.setFilledQuantity(newFilledQty);
-        order.setFilledAvgPrice(newAvgPrice);
-        order.setUpdateTime(LocalDateTime.now());
-        
-        if (newFilledQty >= order.getQuantity()) {
-            order.setStatus(2); // Filled
-        } else {
-            order.setStatus(1); // Partial Filled
+    private void matchAtSinglePrice(List<Order> orders, MarketData marketData, LocalDateTime now) {
+        BigDecimal matchingPrice = resolveMatchingPrice(marketData);
+        if (matchingPrice == null || matchingPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            log.warn("Skip matching due to missing nominal price and depth. stockCode={}", marketData.getStockCode());
+            return;
         }
 
-        // Update Order in DB
-        try {
-            orderService.updateById(order);
-        } catch (Exception e) {
-            log.error("Mock updating order: {}", order);
+        executeAtPrice(buildExecutionQueue(orders, TYPE_BUY), TYPE_BUY, matchingPrice, now);
+        executeAtPrice(buildExecutionQueue(orders, TYPE_SELL), TYPE_SELL, matchingPrice, now);
+    }
+
+    private void executeAtPrice(List<OrderExecutionState> queue, int side, BigDecimal price, LocalDateTime now) {
+        for (OrderExecutionState state : queue) {
+            if (state.remaining <= 0) {
+                continue;
+            }
+            if (!isCrossedByBookLevel(side, state.limitPrice, price)) {
+                continue;
+            }
+            int beforeRemaining = state.remaining;
+            Order matched = orderService.applyMatchExecution(state.orderId, price, state.remaining);
+            int afterRemaining = resolveRemaining(matched);
+            int matchedQty = Math.max(0, beforeRemaining - afterRemaining);
+            if (matchedQty <= 0) {
+                continue;
+            }
+            state.remaining = afterRemaining;
+            logMatchedTrade(matched, price, matchedQty, now);
+        }
+    }
+
+    private List<OrderExecutionState> buildExecutionQueue(List<Order> orders, int side) {
+        if (orders == null || orders.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<OrderExecutionState> queue = new ArrayList<OrderExecutionState>();
+        for (Order order : orders) {
+            if (order == null || !isPendingStatus(order.getStatus())) {
+                continue;
+            }
+            if (safeType(order.getType()) != side) {
+                continue;
+            }
+            int remaining = resolveRemaining(order);
+            if (remaining <= 0) {
+                continue;
+            }
+            queue.add(new OrderExecutionState(order.getId(), order.getPrice(), order.getCreateTime(), remaining));
+        }
+        queue.sort(priorityComparator(side));
+        return queue;
+    }
+
+    private Comparator<OrderExecutionState> priorityComparator(int side) {
+        return (a, b) -> {
+            BigDecimal pa = a.limitPrice == null ? BigDecimal.ZERO : a.limitPrice;
+            BigDecimal pb = b.limitPrice == null ? BigDecimal.ZERO : b.limitPrice;
+            int priceCompare = side == TYPE_BUY ? pb.compareTo(pa) : pa.compareTo(pb);
+            if (priceCompare != 0) {
+                return priceCompare;
+            }
+            if (a.createTime != null && b.createTime != null) {
+                int timeCompare = a.createTime.compareTo(b.createTime);
+                if (timeCompare != 0) {
+                    return timeCompare;
+                }
+            } else if (a.createTime == null && b.createTime != null) {
+                return 1;
+            } else if (a.createTime != null) {
+                return -1;
+            }
+            return a.orderId.compareTo(b.orderId);
+        };
+    }
+
+    private boolean hasOrderBookLiquidity(MarketData marketData) {
+        return hasPositiveLevel(marketData.getAsks()) || hasPositiveLevel(marketData.getBids());
+    }
+
+    private boolean hasPositiveLevel(List<MarketData.Level> levels) {
+        if (levels == null || levels.isEmpty()) {
+            return false;
+        }
+        for (MarketData.Level level : levels) {
+            if (level == null || level.getPrice() == null || level.getVolume() == null) {
+                continue;
+            }
+            if (level.getPrice().compareTo(BigDecimal.ZERO) > 0 && level.getVolume() > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<MarketData.Level> normalizeLevels(List<MarketData.Level> levels, boolean ascending) {
+        if (levels == null || levels.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<MarketData.Level> normalized = new ArrayList<MarketData.Level>();
+        for (MarketData.Level level : levels) {
+            if (level == null || level.getPrice() == null || level.getVolume() == null) {
+                continue;
+            }
+            if (level.getPrice().compareTo(BigDecimal.ZERO) <= 0 || level.getVolume() <= 0) {
+                continue;
+            }
+            normalized.add(level);
+        }
+        normalized.sort(ascending
+                ? Comparator.comparing(MarketData.Level::getPrice)
+                : (a, b) -> b.getPrice().compareTo(a.getPrice()));
+        return normalized;
+    }
+
+    private BigDecimal resolveMatchingPrice(MarketData marketData) {
+        if (marketData.getNominalPrice() != null && marketData.getNominalPrice().compareTo(BigDecimal.ZERO) > 0) {
+            return marketData.getNominalPrice();
+        }
+        if (marketData.getLastPrice() != null && marketData.getLastPrice().compareTo(BigDecimal.ZERO) > 0) {
+            return marketData.getLastPrice();
         }
 
-        // Calculate Fees
-        // Mock lotSize as 100 for now to compute lots
-        int lots = matchQty / 100 == 0 ? 1 : matchQty / 100;
-        boolean isBuy = (order.getType() == 1);
-        BigDecimal totalFee = feeCalculator.calculateTotalFee(matchValue, isBuy, lots);
+        BigDecimal bestAsk = findBestPrice(marketData.getAsks(), true);
+        BigDecimal bestBid = findBestPrice(marketData.getBids(), false);
+        if (bestAsk != null && bestBid != null) {
+            return bestAsk.add(bestBid).divide(new BigDecimal("2"), 4, RoundingMode.HALF_UP);
+        }
+        if (bestAsk != null) {
+            return bestAsk;
+        }
+        return bestBid;
+    }
 
-        // Calculate Settlement Date (T+2)
-        // Note: For HK stocks, it is T+2 working days. Here we simplify by just adding 2 days.
-        LocalDateTime settlementDate = LocalDateTime.now().plusDays(2);
-        
-        log.info("Order Matched: ID={}, Stock={}, Type={}, ExecPrice={}, Qty={}, Fee={}, SettlementDate={}", 
-                order.getId(), order.getStockCode(), order.getType(), execPrice, matchQty, totalFee, settlementDate);
-        
-        // (Optional) Here we would update user's account balance, positions, and create Trade/Transaction records.
-        // E.g. deduct money (for buy) or add money (for sell) + fees
+    private BigDecimal findBestPrice(List<MarketData.Level> levels, boolean ascending) {
+        if (levels == null || levels.isEmpty()) {
+            return null;
+        }
+        return levels.stream()
+                .filter(level -> level != null && level.getPrice() != null && level.getPrice().compareTo(BigDecimal.ZERO) > 0)
+                .map(MarketData.Level::getPrice)
+                .sorted(ascending ? BigDecimal::compareTo : (a, b) -> b.compareTo(a))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean isPendingStatus(Integer status) {
+        int safeStatus = status == null ? 0 : status;
+        return safeStatus == STATUS_PENDING || safeStatus == STATUS_PARTIAL_FILLED;
+    }
+
+    private int safeType(Integer type) {
+        return type == null ? TYPE_BUY : type;
+    }
+
+    private int resolveRemaining(Order order) {
+        if (order == null) {
+            return 0;
+        }
+        int total = order.getQuantity() == null ? 0 : order.getQuantity();
+        int filled = order.getFilledQuantity() == null ? 0 : order.getFilledQuantity();
+        return Math.max(0, total - filled);
+    }
+
+    private boolean isCrossedByBookLevel(int side, BigDecimal limitPrice, BigDecimal bookPrice) {
+        if (bookPrice == null || bookPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+        if (limitPrice == null) {
+            return true;
+        }
+        if (side == TYPE_BUY) {
+            return limitPrice.compareTo(bookPrice) >= 0;
+        }
+        return limitPrice.compareTo(bookPrice) <= 0;
+    }
+
+    private void logMatchedTrade(Order order, BigDecimal executionPrice, int matchedQuantity, LocalDateTime now) {
+        BigDecimal matchedAmount = executionPrice.multiply(new BigDecimal(matchedQuantity)).setScale(2, RoundingMode.HALF_UP);
+        int lots = Math.max(1, matchedQuantity / 100);
+        boolean isBuy = order.getType() != null && order.getType() == TYPE_BUY;
+        BigDecimal totalFee = feeCalculator.calculateTotalFee(matchedAmount, isBuy, lots);
+        LocalDate settlementDate = calculateTPlusTwo(now.toLocalDate());
+
+        log.info("Order matched. orderId={}, stockCode={}, executionPrice={}, matchedQty={}, totalFee={}, settlementDate={}, status={}",
+                order.getId(), order.getStockCode(), executionPrice, matchedQuantity, totalFee, settlementDate, order.getStatus());
+    }
+
+    private LocalDate calculateTPlusTwo(LocalDate tradeDate) {
+        return tradingCalendarService.addTradingDays(tradeDate, 2);
+    }
+
+    private boolean isTradingSession(ZonedDateTime dateTime) {
+        if (!isTradingDay(dateTime.toLocalDate())) {
+            return false;
+        }
+        LocalTime time = dateTime.toLocalTime();
+        boolean morningSession = !time.isBefore(MORNING_OPEN) && time.isBefore(MORNING_CLOSE);
+        boolean afternoonSession = !time.isBefore(AFTERNOON_OPEN) && time.isBefore(MARKET_CLOSE);
+        return morningSession || afternoonSession;
+    }
+
+    private boolean isTradingDay(LocalDate date) {
+        return tradingCalendarService.isTradingDay(date);
+    }
+
+    private LocalDateTime nowInHkDateTime() {
+        return ZonedDateTime.now(tradingClock).withZoneSameInstant(HK_ZONE).toLocalDateTime();
+    }
+
+    private static class OrderExecutionState {
+        private final String orderId;
+        private final BigDecimal limitPrice;
+        private final LocalDateTime createTime;
+        private int remaining;
+
+        private OrderExecutionState(String orderId, BigDecimal limitPrice, LocalDateTime createTime, int remaining) {
+            this.orderId = orderId;
+            this.limitPrice = limitPrice;
+            this.createTime = createTime;
+            this.remaining = remaining;
+        }
     }
 }
