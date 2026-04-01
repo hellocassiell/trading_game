@@ -56,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
         String token = generateToken(phone);
         String userId = resolveUserId(phone);
         userProfileService.bindPhoneToUser(phone, userId);
+        userProfileService.ensureAutoNickname(userId);
         boolean profileCompleted = userProfileService.hasCompletedProfile(userId);
         return new AuthSessionResponse(userId, phone, token, profileCompleted);
     }

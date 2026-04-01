@@ -49,9 +49,15 @@ aob:
 
 app:
   cors:
-    allowed-origin-patterns: http://localhost:*,http://127.0.0.1:*,http://99.17.119.184:*,http://10.47.149.92:*
+    allowed-origin-patterns: https://*.vercel.app,https://*.cpolar.cn,https://*.cpolar.com,https://*.cpolar.top,https://*.cpolar.io,http://localhost:*,http://127.0.0.1:*,http://99.17.119.184:*,http://10.47.149.92:*
   avatar:
     upload-dir: uploads/avatars
+  ledger:
+    db-strict-mode: ${APP_LEDGER_DB_STRICT_MODE:false}
+  user-profile:
+    db-strict-mode: ${APP_USER_PROFILE_DB_STRICT_MODE:false}
+  order:
+    redis-strict-mode: ${APP_ORDER_REDIS_STRICT_MODE:false}
 
 trading:
   hk-holidays: 2026-01-01,2026-02-17,2026-02-18,2026-04-03,2026-04-06,2026-05-01,2026-07-01,2026-10-01,2026-12-25

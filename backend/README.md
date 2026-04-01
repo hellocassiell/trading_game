@@ -137,6 +137,14 @@ chmod +x deploy/scripts/deploy-demo.sh deploy/scripts/smoke-test.sh
 ./deploy/scripts/deploy-demo.sh
 ```
 
+`deploy/env/backend.demo.env` 建议保留以下严格模式配置，避免 DB 或 Redis 关键链路异常被静默回退：
+
+```bash
+APP_LEDGER_DB_STRICT_MODE=true
+APP_USER_PROFILE_DB_STRICT_MODE=true
+APP_ORDER_REDIS_STRICT_MODE=true
+```
+
 ### Smoke tests
 
 ```bash

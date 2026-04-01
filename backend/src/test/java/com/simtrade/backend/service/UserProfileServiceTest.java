@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -88,6 +89,71 @@ class UserProfileServiceTest {
         Assertions.assertEquals(2, completedProfiles.size());
         Assertions.assertEquals("u_4001", completedProfiles.get(0).getUserId());
         Assertions.assertEquals("u_4003", completedProfiles.get(1).getUserId());
+    }
+
+    @Test
+    void getNickname_whenDbReadFailsAndStrictModeEnabled_shouldThrow() {
+        UserProfileMapper mapper = Mockito.mock(UserProfileMapper.class);
+        UserProfileService service = new UserProfileService(mapper);
+        ReflectionTestUtils.setField(service, "dbStrictMode", true);
+
+        Mockito.when(mapper.selectById("u_strict_02"))
+                .thenThrow(new RuntimeException("db down"));
+
+        IllegalStateException ex = Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> service.getNickname("u_strict_02")
+        );
+        Assertions.assertTrue(ex.getMessage().contains("Load user profile failed."));
+    }
+
+    @Test
+    void findUserIdByPhone_whenDbReadFailsAndStrictModeEnabled_shouldThrow() {
+        UserProfileMapper mapper = Mockito.mock(UserProfileMapper.class);
+        UserProfileService service = new UserProfileService(mapper);
+        ReflectionTestUtils.setField(service, "dbStrictMode", true);
+
+        Mockito.when(mapper.selectOne(Mockito.any()))
+                .thenThrow(new RuntimeException("db down"));
+
+        IllegalStateException ex = Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> service.findUserIdByPhone("91234567")
+        );
+        Assertions.assertTrue(ex.getMessage().contains("Load user profile by phone failed."));
+    }
+
+    @Test
+    void listCompletedProfiles_whenDbReadFailsAndStrictModeEnabled_shouldThrow() {
+        UserProfileMapper mapper = Mockito.mock(UserProfileMapper.class);
+        UserProfileService service = new UserProfileService(mapper);
+        ReflectionTestUtils.setField(service, "dbStrictMode", true);
+
+        Mockito.when(mapper.selectList(null))
+                .thenThrow(new RuntimeException("db down"));
+
+        IllegalStateException ex = Assertions.assertThrows(
+                IllegalStateException.class,
+                service::listCompletedProfiles
+        );
+        Assertions.assertTrue(ex.getMessage().contains("Load completed user profiles failed."));
+    }
+
+    @Test
+    void upsertProfile_whenDbWriteFailsAndStrictModeEnabled_shouldThrow() {
+        UserProfileMapper mapper = Mockito.mock(UserProfileMapper.class);
+        UserProfileService service = new UserProfileService(mapper);
+        ReflectionTestUtils.setField(service, "dbStrictMode", true);
+
+        Mockito.when(mapper.selectById("u_strict_write_01")).thenReturn(null);
+        Mockito.doThrow(new RuntimeException("db down"))
+                .when(mapper).insert(Mockito.any(UserProfileEntity.class));
+
+        IllegalStateException ex = Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> service.upsertProfile("u_strict_write_01", "严格模式", "a1")
+        );
+        Assertions.assertTrue(ex.getMessage().contains("Persist user profile failed."));
     }
 
     private UserProfileEntity buildProfile(String userId, String nickname, String avatarId, String phone) {

@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 class AuthServiceImplTest {
 
@@ -47,6 +49,37 @@ class AuthServiceImplTest {
 
         Assertions.assertEquals("u_existing_1001", result.getUserId());
         Assertions.assertTrue(result.isProfileCompleted());
+    }
+
+    @Test
+    void verifyCode_shouldAssignUniqueAutoNicknameWhenProfileNotCompleted() {
+        UserProfileService userProfileService = new UserProfileService(null);
+        AuthServiceImpl authService = new AuthServiceImpl(userProfileService);
+        Set<String> nicknames = new HashSet<>();
+
+        for (int i = 0; i < 80; i++) {
+            String phone = String.format("9%07d", i);
+            String code = issueCode(authService, phone);
+            AuthSessionResponse result = authService.verifyCode(phone, code);
+            String nickname = userProfileService.getNickname(result.getUserId());
+
+            Assertions.assertFalse(result.isProfileCompleted());
+            Assertions.assertTrue(nickname.matches("参赛者\\d{4}"));
+            Assertions.assertTrue(nicknames.add(nickname), "Auto nickname duplicated: " + nickname);
+        }
+    }
+
+    @Test
+    void verifyCode_shouldAllowOverrideAutoNickname() {
+        UserProfileService userProfileService = new UserProfileService(null);
+        AuthServiceImpl authService = new AuthServiceImpl(userProfileService);
+
+        String code = issueCode(authService, "95555555");
+        AuthSessionResponse result = authService.verifyCode("95555555", code);
+        Assertions.assertTrue(userProfileService.getNickname(result.getUserId()).matches("参赛者\\d{4}"));
+
+        userProfileService.upsertProfile(result.getUserId(), "参赛者9001", null);
+        Assertions.assertEquals("参赛者9001", userProfileService.getNickname(result.getUserId()));
     }
 
     @SuppressWarnings("unchecked")

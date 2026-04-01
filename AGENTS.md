@@ -109,7 +109,7 @@
 - 当前状态：已有订单提交、撮合、手续费计算、统一返回结构、全局异常处理、手续费单元测试
 - 当前新增：已补 `AccountLedgerService` 账本层，撮合后会更新可用/冻结/在途资金与持仓（含限价挂单冻结、撤单释放、T+2 结算入账）；订单详情/历史视图已可返回 `settlementDate`、`settlementStatus`、`estimatedNetCashFlow`
 - 当前新增：AOB 行情链路已补 protobuf 解码与订阅发布能力（`aob.subscription.*`），`MarketDataConsumer` 支持 protobuf/JSON 双格式消费并统一进入实时推送+撮合
-- 当前新增：下单去重已升级为 Redis 优先（`trade:dedup:submit:*`，1500ms 窗口）并保留本地内存兜底，不改接口契约
+- 当前新增：下单去重已升级为 Redis 优先（`trade:dedup:submit:*`，1500ms 窗口），开发环境默认保留本地内存兜底；若开启 `app.order.redis-strict-mode`（`application-prod.yml` 默认 `true`）则 Redis 不可用时会直接抛错
 - 当前新增：下单接口支持 `X-Idempotency-Key`（24h 语义幂等）；同 key 同请求返回同一 `orderId`，同 key 不同请求返回 400
 - 当前新增：撮合已支持按订单簿逐级消耗量（逐笔部分成交）+ 价格优先/时间优先；无可用订单簿流动性时回退按盘价撮合
 - 当前新增：已引入 `TradingCalendarService`（周末+可配置 `trading.hk-holidays`）统一交易日与 T+2 计算
@@ -118,9 +118,14 @@
 - 当前多语补充：`/api/v1/trade/orders`、`/preview`、`/cancel` 返回体同时包含 `language` 与 `lang` 字段，兼容旧前端并对齐新约定
 - 当前事实：实现是可运行雏形，不是完整生产版
 - 当前补充：账户持仓接口已改为按 `X-User-Id` 对应用户的已成交订单聚合返回；注册流程支持提交昵称与头像到后端用户资料存储（`t_user_profile` 持久化，服务层 DB 优先 + 内存兜底）
+- 当前补充：`POST /api/v1/auth/verify-code` 验证通过后若用户尚未设置昵称，后端会立即生成且落库一个可覆盖的默认昵称（格式 `参赛者xxxx`，四位随机数，生成时保证不与现有昵称重复）
 - 当前补充：排行榜、参赛人数、星级参赛者及相关统计口径已统一改为“完成头像 + 昵称”的已注册参赛者；未交易但已完成注册的用户也必须进入榜单，默认总资产 `1,000,000 HKD`、涨跌幅 `0.00%`
 - 当前补充：前端请求用户态 `/api/v1` 接口时不得再注入 demo `userId`；仅在本地已登录会话存在时透传真实 `X-User-Id`
 - 当前补充：头像资料存储新增白名单校验（`a1~a6`）+ 上传文件路径校验；上传文件落本地目录 `uploads/avatars`，由后端 `/api/v1/auth/avatar-files/{filename}` 提供读取
+- 当前补充：账本服务新增 `app.ledger.db-strict-mode`（默认 `false`，`application-prod.yml` 默认 `true`）；开启后账本读库失败将直接抛错，不再静默回退到内存
+- 当前补充：用户资料服务新增 `app.user-profile.db-strict-mode`（默认 `false`，`application-prod.yml` 默认 `true`）；开启后用户资料相关读写库失败将直接抛错，不再静默回退到内存
+- 当前补充：订单服务新增 `app.order.redis-strict-mode`（默认 `false`，`application-prod.yml` 默认 `true`）；开启后 Redis 去重/幂等存取失败将直接抛错，不再回退到本地内存
+- 当前补充：演示环境变量样例 `deploy/env/backend.demo.env.example` 已补 `APP_LEDGER_DB_STRICT_MODE=true`、`APP_USER_PROFILE_DB_STRICT_MODE=true` 与 `APP_ORDER_REDIS_STRICT_MODE=true`，建议保持开启
 - 当前补充：已新增演示环境部署骨架：`backend/Dockerfile`、`backend/src/main/resources/application-prod.yml`、`deploy/docker-compose.demo.yml`、`deploy/nginx/demo.conf`、`deploy/env/backend.demo.env.example`、`deploy/sql/init-demo.sql`、`deploy/scripts/deploy-demo.sh`、`deploy/scripts/smoke-test.sh`
 - 当前补充：已新增 `frontend/Dockerfile`，用于后续服务器同机部署备选方案；当前主演示路径仍以 `Vercel + 本地后端 HTTPS 穿透` 为准
 - 当前差异：
@@ -247,7 +252,7 @@
   - `backend/src/test/java/com/simtrade/backend/service/MatchingServiceImplTest.java`
   - `backend/src/test/java/com/simtrade/backend/controller/V1ControllerTest.java`
 - 注意：`V1ControllerTest`（`@WebMvcTest`）已对账务持久化相关 Mapper 使用 `@MockBean`，避免测试上下文误拉起 MyBatis `sqlSessionFactory` 依赖。
-- 2026-03-31 当前环境结果：已实测通过（105 tests）
+- 2026-04-01 当前环境结果：已实测通过（118 tests）
 - 结论：`mvn test` 已可作为后端默认回归入口，但必须显式切到 JDK 17
 
 ### 后端本地启动
@@ -262,6 +267,14 @@
 - 当前本地跨域：后端已对 `/api/**` 开启 localhost/127.0.0.1 的开发态 CORS 放行，前端默认 `http://localhost:3000` 可直接联调 `http://localhost:8080`
 - 当前跨域补充：CORS 配置已改为读取 `app.cors.allowed-origin-patterns`；若使用 HTTPS 穿透并需要浏览器直连后端，请确认允许对应 `https://<your-frontend-domain>` 或 Vercel 预览域
 - 注意：当前 shell 如设置了 `http_proxy` / `https_proxy`，本地调接口时请使用 `curl --noproxy '*' ...`，避免本地回环请求被代理拦截成 502
+
+### 交易联调回归脚本（新增）
+
+- 脚本：`deploy/scripts/trade-regression-multilang.sh`
+- 新增时间：2026-04-01
+- 覆盖范围：`zh-Hant/zh-Hans/en` 三语的报价、预览、下单、活动订单、改单、撤单、历史与错误分支；并包含重复提交（无幂等键）与 `X-Idempotency-Key` 回放/冲突校验
+- 运行命令：`API_BASE_URL=http://127.0.0.1:8080 USER_ID=u_smoke_0401 ./deploy/scripts/trade-regression-multilang.sh`
+- 冒烟串联：`deploy/scripts/smoke-test.sh` 已支持 `RUN_TRADE_REGRESSION=1`，可在基础连通性检查后自动执行上述三语交易回归
 
 ### 改动后的执行原则
 

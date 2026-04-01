@@ -15,6 +15,7 @@ import com.simtrade.backend.mapper.SettlementEntryMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -58,6 +59,9 @@ public class AccountLedgerService {
 
     @Autowired(required = false)
     private SettlementEntryMapper settlementEntryMapper;
+
+    @Value("${app.ledger.db-strict-mode:false}")
+    private boolean dbStrictMode = false;
 
     public synchronized void reserveForPendingOrder(Order order, String orderType, BigDecimal estimatedFee) {
         if (order == null || order.getId() == null || !"LIMIT".equalsIgnoreCase(orderType)) {
@@ -296,6 +300,9 @@ public class AccountLedgerService {
             putPositionState(safeUserId, safeStockCode, toPositionState(entity));
             return true;
         } catch (Exception ex) {
+            if (dbStrictMode) {
+                throw new IllegalStateException("Load position record failed.", ex);
+            }
             log.warn("Load position record from db failed, fallback to in-memory. userId={}, stockCode={}, reason={}",
                     safeUserId, safeStockCode, ex.getMessage());
             return false;
@@ -497,6 +504,9 @@ public class AccountLedgerService {
             reservationStore.put(safeOrderId, loaded);
             return loaded;
         } catch (Exception ex) {
+            if (dbStrictMode) {
+                throw new IllegalStateException("Load order reservation failed.", ex);
+            }
             log.warn("Load order reservation from db failed, fallback to in-memory. orderId={}, reason={}", safeOrderId, ex.getMessage());
             return null;
         }
@@ -550,6 +560,9 @@ public class AccountLedgerService {
                 userPositions.put(safeStock(entity.getStockCode()), toPositionState(entity));
             }
         } catch (Exception ex) {
+            if (dbStrictMode) {
+                throw new IllegalStateException("Load positions failed.", ex);
+            }
             log.warn("Load positions from db failed, fallback to in-memory. userId={}, reason={}", userId, ex.getMessage());
         }
     }
@@ -571,6 +584,9 @@ public class AccountLedgerService {
             }
             return toAccountState(entity);
         } catch (Exception ex) {
+            if (dbStrictMode) {
+                throw new IllegalStateException("Load account balance failed.", ex);
+            }
             log.warn("Load account balance from db failed, fallback to in-memory. userId={}, reason={}", userId, ex.getMessage());
             return null;
         }
@@ -592,6 +608,9 @@ public class AccountLedgerService {
             }
             return toPositionState(entity);
         } catch (Exception ex) {
+            if (dbStrictMode) {
+                throw new IllegalStateException("Load account position failed.", ex);
+            }
             log.warn("Load account position from db failed, fallback to in-memory. userId={}, stockCode={}, reason={}",
                     userId, stockCode, ex.getMessage());
             return null;
@@ -815,6 +834,9 @@ public class AccountLedgerService {
             }
             return toOrderSettlementState(entity);
         } catch (Exception ex) {
+            if (dbStrictMode) {
+                throw new IllegalStateException("Load order settlement failed.", ex);
+            }
             log.warn("Load order settlement from db failed, fallback to in-memory. orderId={}, reason={}", orderId, ex.getMessage());
             return null;
         }

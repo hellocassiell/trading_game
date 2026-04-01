@@ -358,6 +358,32 @@ class V1ControllerTest {
     }
 
     @Test
+    void cancelOrder_shouldLocalizeErrorMessageToZhHans() throws Exception {
+        Mockito.when(orderService.cancelOrder("u_10001", "ord_404"))
+                .thenThrow(new IllegalArgumentException("Order is not cancelable"));
+
+        mockMvc.perform(post("/api/v1/trade/orders/ord_404/cancel?lang=zh-Hans")
+                        .header("X-User-Id", "u_10001")
+                        .header("X-Lang", "zh-Hans"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("订单当前状态不可取消。"));
+    }
+
+    @Test
+    void cancelOrder_shouldLocalizeErrorMessageToEnglish() throws Exception {
+        Mockito.when(orderService.cancelOrder("u_10001", "ord_405"))
+                .thenThrow(new IllegalArgumentException("Order is not cancelable"));
+
+        mockMvc.perform(post("/api/v1/trade/orders/ord_405/cancel?lang=en")
+                        .header("X-User-Id", "u_10001")
+                        .header("X-Lang", "en"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400))
+                .andExpect(jsonPath("$.msg").value("Order is not cancelable."));
+    }
+
+    @Test
     void auth_sendAndVerifyCode_shouldReturn200() throws Exception {
         Mockito.doNothing().when(authService).sendCode("91234567");
         Mockito.when(authService.verifyCode("91234567", "123456"))

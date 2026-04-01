@@ -643,6 +643,93 @@ class OrderServiceImplV1Test {
     }
 
     @Test
+    void placeOrderV1_shouldThrowWhenRedisDedupUnavailableInStrictMode() {
+        Mockito.when(mockDataService.getLotSize("00700")).thenReturn(100);
+        Mockito.when(mockDataService.getCurrentPrice("00700")).thenReturn(new BigDecimal("300.00"));
+        Mockito.when(mockDataService.getTickSize(new BigDecimal("300.00"))).thenReturn(new BigDecimal("0.20"));
+        ReflectionTestUtils.setField(orderService, "redisStrictMode", true);
+
+        TradeOrderCreateRequest request = new TradeOrderCreateRequest();
+        request.setStockCode("00700");
+        request.setDirection("BUY");
+        request.setOrderType("LIMIT");
+        request.setPrice(new BigDecimal("300.00"));
+        request.setQuantity(100);
+
+        IllegalStateException exception = Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> orderService.placeOrderV1("u_10001", request)
+        );
+        Assertions.assertTrue(exception.getMessage().contains("Redis dedup"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void placeOrderV1_shouldThrowWhenLoadIdempotencyFailsInStrictMode() {
+        ReflectionTestUtils.setField(orderService, "redisStrictMode", true);
+        StringRedisTemplate redisTemplate = Mockito.mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOps = Mockito.mock(ValueOperations.class);
+        Mockito.when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        Mockito.when(valueOps.get(Mockito.contains("trade:idempotency:submit:")))
+                .thenThrow(new RuntimeException("redis down"));
+        ReflectionTestUtils.setField(orderService, "stringRedisTemplate", redisTemplate);
+
+        TradeOrderCreateRequest request = new TradeOrderCreateRequest();
+        request.setStockCode("00700");
+        request.setDirection("BUY");
+        request.setOrderType("LIMIT");
+        request.setPrice(new BigDecimal("300.00"));
+        request.setQuantity(100);
+
+        IllegalStateException exception = Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> orderService.placeOrderV1("u_10001", request, "idem-strict-load")
+        );
+        Assertions.assertTrue(exception.getMessage().contains("Load idempotency record"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void placeOrderV1_shouldThrowWhenStoreIdempotencyFailsInStrictMode() {
+        Mockito.when(mockDataService.getLotSize("00700")).thenReturn(100);
+        Mockito.when(mockDataService.getCurrentPrice("00700")).thenReturn(new BigDecimal("300.00"));
+        Mockito.when(mockDataService.getTickSize(new BigDecimal("300.00"))).thenReturn(new BigDecimal("0.20"));
+        stubSaveToPersistenceMap();
+        ReflectionTestUtils.setField(orderService, "redisStrictMode", true);
+
+        StringRedisTemplate redisTemplate = Mockito.mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOps = Mockito.mock(ValueOperations.class);
+        Mockito.when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        Mockito.when(valueOps.get(Mockito.contains("trade:idempotency:submit:"))).thenReturn(null);
+        Mockito.when(valueOps.setIfAbsent(
+                Mockito.contains("trade:dedup:submit:"),
+                Mockito.eq("1"),
+                Mockito.eq(1500L),
+                Mockito.eq(TimeUnit.MILLISECONDS)
+        )).thenReturn(true);
+        Mockito.doThrow(new RuntimeException("redis write down")).when(valueOps).set(
+                Mockito.contains("trade:idempotency:submit:"),
+                Mockito.anyString(),
+                Mockito.eq(24 * 60 * 60L),
+                Mockito.eq(TimeUnit.SECONDS)
+        );
+        ReflectionTestUtils.setField(orderService, "stringRedisTemplate", redisTemplate);
+
+        TradeOrderCreateRequest request = new TradeOrderCreateRequest();
+        request.setStockCode("00700");
+        request.setDirection("BUY");
+        request.setOrderType("LIMIT");
+        request.setPrice(new BigDecimal("300.00"));
+        request.setQuantity(100);
+
+        IllegalStateException exception = Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> orderService.placeOrderV1("u_10001", request, "idem-strict-store")
+        );
+        Assertions.assertTrue(exception.getMessage().contains("Persist idempotency record"));
+    }
+
+    @Test
     void placeOrderV1_shouldReturnSameOrderForSameIdempotencyKeyRetry() {
         Mockito.when(mockDataService.getLotSize("00700")).thenReturn(100);
         Mockito.when(mockDataService.getCurrentPrice("00700")).thenReturn(new BigDecimal("300.00"));

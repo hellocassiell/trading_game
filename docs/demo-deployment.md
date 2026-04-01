@@ -54,7 +54,6 @@ cd backend
 你可以使用任意支持 HTTPS 公网暴露的工具，例如：
 
 - `Cloudflare Tunnel`
-- `ngrok`
 - `pinggy`
 
 目标是得到类似这样的地址：
@@ -86,6 +85,14 @@ npm run build
 ```bash
 NEXT_PUBLIC_API_BASE_URL=https://<你的 HTTPS 穿透地址>
 NEXT_PUBLIC_DEMO_USER_ID=u_10001
+```
+
+后端（`prod`）默认已启用账本/用户资料 DB 严格模式与订单 Redis 严格模式。若你走容器化备选路径并维护 `deploy/env/backend.demo.env`，建议显式保留：
+
+```bash
+APP_LEDGER_DB_STRICT_MODE=true
+APP_USER_PROFILE_DB_STRICT_MODE=true
+APP_ORDER_REDIS_STRICT_MODE=true
 ```
 
 ### 注意

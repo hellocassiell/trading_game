@@ -26,7 +26,14 @@ public class WebCorsConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOriginPatterns(allowedOriginPatterns)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("Content-Type", "X-User-Id", "Authorization", "X-Lang", "lang", "Accept-Language")
+                .allowedHeaders(
+                        "Content-Type",
+                        "X-User-Id",
+                        "Authorization",
+                        "X-Lang",
+                        "lang",
+                        "Accept-Language"
+                )
                 .allowCredentials(true)
                 .maxAge(3600);
     }

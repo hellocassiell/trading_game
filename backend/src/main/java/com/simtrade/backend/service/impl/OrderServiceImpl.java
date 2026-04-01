@@ -18,6 +18,7 @@ import com.simtrade.backend.service.OrderService;
 import com.simtrade.backend.service.TradingCalendarService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +68,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final ConcurrentMap<String, SubmissionIdempotencyRecord> localIdempotencyTracker = new ConcurrentHashMap<String, SubmissionIdempotencyRecord>();
     private final ConcurrentMap<String, Object> idempotencyLocks = new ConcurrentHashMap<String, Object>();
     private Clock tradingClock = Clock.system(HK_ZONE);
+
+    @Value("${app.order.redis-strict-mode:false}")
+    private boolean redisStrictMode = false;
 
     @Autowired
     private MockDataService mockDataService;
@@ -784,6 +788,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     private boolean tryAcquireSubmissionInRedis(String signature) {
         if (stringRedisTemplate == null) {
+            if (redisStrictMode) {
+                throw new IllegalStateException("Redis dedup is unavailable.");
+            }
             return false;
         }
         try {
@@ -800,6 +807,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         } catch (IllegalArgumentException ex) {
             throw ex;
         } catch (Exception ex) {
+            if (redisStrictMode) {
+                throw new IllegalStateException("Redis dedup is unavailable.", ex);
+            }
             log.warn("Redis dedup unavailable, fallback to in-memory dedup. reason={}", ex.getMessage());
             return false;
         }
@@ -860,6 +870,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             }
         }
         if (stringRedisTemplate == null) {
+            if (redisStrictMode) {
+                throw new IllegalStateException("Load idempotency record failed: redis is unavailable.");
+            }
             return local;
         }
         try {
@@ -876,6 +889,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             }
             return parsed;
         } catch (Exception ex) {
+            if (redisStrictMode) {
+                throw new IllegalStateException("Load idempotency record failed.", ex);
+            }
             log.warn("Load idempotency record from redis failed, fallback to local cache. reason={}", ex.getMessage());
             return null;
         }
@@ -887,12 +903,18 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
         localIdempotencyTracker.put(redisKey, record);
         if (stringRedisTemplate == null) {
+            if (redisStrictMode) {
+                throw new IllegalStateException("Persist idempotency record failed: redis is unavailable.");
+            }
             return;
         }
         try {
             String payload = writeIdempotencyRecord(record);
             stringRedisTemplate.opsForValue().set(redisKey, payload, IDEMPOTENCY_TTL_SECONDS, TimeUnit.SECONDS);
         } catch (Exception ex) {
+            if (redisStrictMode) {
+                throw new IllegalStateException("Persist idempotency record failed.", ex);
+            }
             log.warn("Persist idempotency record to redis failed, keep local cache only. reason={}", ex.getMessage());
         }
     }

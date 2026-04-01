@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -14,15 +15,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class UserProfileService {
 
     private static final Logger log = LoggerFactory.getLogger(UserProfileService.class);
+    private static final String AUTO_NICKNAME_PREFIX = "参赛者";
+    private static final int AUTO_NICKNAME_SUFFIX_BOUND = 10000;
 
     private final UserProfileMapper userProfileMapper;
     private final Map<String, UserProfile> profileStore = new ConcurrentHashMap<>();
     private final Map<String, String> phoneToUserIdStore = new ConcurrentHashMap<>();
+
+    @Value("${app.user-profile.db-strict-mode:false}")
+    private boolean dbStrictMode = false;
 
     public UserProfileService(@Autowired(required = false) UserProfileMapper userProfileMapper) {
         this.userProfileMapper = userProfileMapper;
@@ -71,6 +78,37 @@ public class UserProfileService {
                 dbProfile.setAvatarId(avatarId.trim());
             }
         });
+    }
+
+    public String ensureAutoNickname(String userId) {
+        String safeUserId = normalizeKey(userId);
+        if (safeUserId == null) {
+            throw new IllegalArgumentException("User ID cannot be blank.");
+        }
+        String existing = getNickname(safeUserId);
+        if (!isBlank(existing)) {
+            return existing.trim();
+        }
+
+        synchronized (this) {
+            String latestExisting = getNickname(safeUserId);
+            if (!isBlank(latestExisting)) {
+                return latestExisting.trim();
+            }
+
+            int start = ThreadLocalRandom.current().nextInt(AUTO_NICKNAME_SUFFIX_BOUND);
+            for (int offset = 0; offset < AUTO_NICKNAME_SUFFIX_BOUND; offset++) {
+                int value = (start + offset) % AUTO_NICKNAME_SUFFIX_BOUND;
+                String candidate = AUTO_NICKNAME_PREFIX + String.format("%04d", value);
+                if (isNicknameTakenByOtherUser(candidate, safeUserId)) {
+                    continue;
+                }
+                upsertProfile(safeUserId, candidate, null);
+                return candidate;
+            }
+        }
+
+        throw new IllegalStateException("Failed to allocate default nickname.");
     }
 
     public String getNickname(String userId) {
@@ -154,6 +192,9 @@ public class UserProfileService {
                     return entity.getUserId().trim();
                 }
             } catch (Exception ex) {
+                if (dbStrictMode) {
+                    throw new IllegalStateException("Load user profile by phone failed.", ex);
+                }
                 log.warn("Load user profile by phone from db failed, fallback to in-memory. phone={}, reason={}", safePhone, ex.getMessage());
             }
         }
@@ -185,6 +226,9 @@ public class UserProfileService {
                     }
                 }
             } catch (Exception ex) {
+                if (dbStrictMode) {
+                    throw new IllegalStateException("Load completed user profiles failed.", ex);
+                }
                 log.warn("Load completed user profiles from db failed, fallback to in-memory. reason={}", ex.getMessage());
             }
         }
@@ -244,9 +288,58 @@ public class UserProfileService {
         try {
             return userProfileMapper.selectById(userId);
         } catch (Exception ex) {
+            if (dbStrictMode) {
+                throw new IllegalStateException("Load user profile failed.", ex);
+            }
             log.warn("Load user profile from db failed, fallback to in-memory. userId={}, reason={}", userId, ex.getMessage());
             return null;
         }
+    }
+
+    private boolean isNicknameTakenByOtherUser(String nickname, String excludeUserId) {
+        if (isBlank(nickname)) {
+            return false;
+        }
+        String safeNickname = nickname.trim();
+        String safeExcludeUserId = normalizeKey(excludeUserId);
+
+        if (userProfileMapper != null) {
+            try {
+                QueryWrapper<UserProfileEntity> query = new QueryWrapper<UserProfileEntity>()
+                        .eq("nickname", safeNickname)
+                        .last("LIMIT 1");
+                if (safeExcludeUserId != null) {
+                    query.ne("user_id", safeExcludeUserId);
+                }
+                UserProfileEntity matched = userProfileMapper.selectOne(query);
+                if (matched != null && !safeNickname.equals(normalizeKey(matched.getNickname()))) {
+                    log.warn("Nickname query returned inconsistent data. nickname={}, userId={}", safeNickname, matched.getUserId());
+                }
+                if (matched != null) {
+                    return true;
+                }
+            } catch (Exception ex) {
+                if (dbStrictMode) {
+                    throw new IllegalStateException("Check nickname uniqueness failed.", ex);
+                }
+                log.warn("Check nickname uniqueness from db failed, fallback to in-memory. nickname={}, reason={}", safeNickname, ex.getMessage());
+            }
+        }
+
+        for (Map.Entry<String, UserProfile> entry : profileStore.entrySet()) {
+            String currentUserId = normalizeKey(entry.getKey());
+            if (currentUserId == null || currentUserId.equals(safeExcludeUserId)) {
+                continue;
+            }
+            UserProfile profile = entry.getValue();
+            if (profile == null || isBlank(profile.nickname)) {
+                continue;
+            }
+            if (safeNickname.equals(profile.nickname.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void upsertDbProfile(String userId, java.util.function.Consumer<UserProfileEntity> mutator) {
@@ -269,6 +362,9 @@ public class UserProfileService {
             existing.setUpdatedAt(now);
             userProfileMapper.updateById(existing);
         } catch (Exception ex) {
+            if (dbStrictMode) {
+                throw new IllegalStateException("Persist user profile failed.", ex);
+            }
             log.warn("Persist user profile to db failed, fallback to in-memory. userId={}, reason={}", userId, ex.getMessage());
         }
     }

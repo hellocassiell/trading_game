@@ -1,9 +1,16 @@
 package com.simtrade.backend.service;
 
 import com.simtrade.backend.entity.Order;
+import com.simtrade.backend.mapper.AccountBalanceMapper;
+import com.simtrade.backend.mapper.AccountPositionMapper;
+import com.simtrade.backend.mapper.OrderReservationMapper;
+import com.simtrade.backend.mapper.OrderSettlementMapper;
+import com.simtrade.backend.mapper.SettlementEntryMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -127,6 +134,57 @@ class AccountLedgerServiceTest {
         AccountLedgerService.OrderSettlementSnapshot settled = ledgerService.getOrderSettlementSnapshot("ord_settle_1");
         Assertions.assertNotNull(settled);
         Assertions.assertEquals("SETTLED", settled.getSettlementStatus());
+    }
+
+    @Test
+    void getAccountSnapshot_whenDbReadFailsAndStrictModeEnabled_shouldThrow() {
+        AccountBalanceMapper accountBalanceMapper = Mockito.mock(AccountBalanceMapper.class);
+        AccountPositionMapper accountPositionMapper = Mockito.mock(AccountPositionMapper.class);
+        OrderReservationMapper orderReservationMapper = Mockito.mock(OrderReservationMapper.class);
+        OrderSettlementMapper orderSettlementMapper = Mockito.mock(OrderSettlementMapper.class);
+        SettlementEntryMapper settlementEntryMapper = Mockito.mock(SettlementEntryMapper.class);
+
+        ReflectionTestUtils.setField(ledgerService, "accountBalanceMapper", accountBalanceMapper);
+        ReflectionTestUtils.setField(ledgerService, "accountPositionMapper", accountPositionMapper);
+        ReflectionTestUtils.setField(ledgerService, "orderReservationMapper", orderReservationMapper);
+        ReflectionTestUtils.setField(ledgerService, "orderSettlementMapper", orderSettlementMapper);
+        ReflectionTestUtils.setField(ledgerService, "settlementEntryMapper", settlementEntryMapper);
+        ReflectionTestUtils.setField(ledgerService, "dbStrictMode", true);
+
+        Mockito.when(accountBalanceMapper.selectById("u_strict_01"))
+                .thenThrow(new RuntimeException("db down"));
+
+        IllegalStateException ex = Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> ledgerService.getAccountSnapshot("u_strict_01")
+        );
+        Assertions.assertTrue(ex.getMessage().contains("Load account balance failed."));
+    }
+
+    @Test
+    void getAccountSnapshot_whenDbReadFailsAndStrictModeDisabled_shouldFallback() {
+        AccountBalanceMapper accountBalanceMapper = Mockito.mock(AccountBalanceMapper.class);
+        AccountPositionMapper accountPositionMapper = Mockito.mock(AccountPositionMapper.class);
+        OrderReservationMapper orderReservationMapper = Mockito.mock(OrderReservationMapper.class);
+        OrderSettlementMapper orderSettlementMapper = Mockito.mock(OrderSettlementMapper.class);
+        SettlementEntryMapper settlementEntryMapper = Mockito.mock(SettlementEntryMapper.class);
+
+        ReflectionTestUtils.setField(ledgerService, "accountBalanceMapper", accountBalanceMapper);
+        ReflectionTestUtils.setField(ledgerService, "accountPositionMapper", accountPositionMapper);
+        ReflectionTestUtils.setField(ledgerService, "orderReservationMapper", orderReservationMapper);
+        ReflectionTestUtils.setField(ledgerService, "orderSettlementMapper", orderSettlementMapper);
+        ReflectionTestUtils.setField(ledgerService, "settlementEntryMapper", settlementEntryMapper);
+        ReflectionTestUtils.setField(ledgerService, "dbStrictMode", false);
+
+        Mockito.when(accountBalanceMapper.selectById("u_relaxed_01"))
+                .thenThrow(new RuntimeException("db down"))
+                .thenReturn(null)
+                .thenReturn(null);
+
+        AccountLedgerService.AccountSnapshot snapshot = ledgerService.getAccountSnapshot("u_relaxed_01");
+        Assertions.assertEquals(new BigDecimal("1000000.00"), snapshot.getAvailableCash());
+        Assertions.assertEquals(new BigDecimal("0.00"), snapshot.getFrozenCash());
+        Assertions.assertEquals(new BigDecimal("0.00"), snapshot.getTransitCash());
     }
 
     private Order buildOrder(String orderId,
