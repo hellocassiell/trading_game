@@ -70,7 +70,7 @@ class UserProfileServiceTest {
     }
 
     @Test
-    void listCompletedProfiles_shouldReturnCompletedUsersFromDatabaseAndMemory() {
+    void listCompletedProfiles_shouldIncludeNicknameOnlyUsersFromDatabaseAndMemory() {
         UserProfileMapper mapper = Mockito.mock(UserProfileMapper.class);
         UserProfileService service = new UserProfileService(mapper);
 
@@ -86,9 +86,10 @@ class UserProfileServiceTest {
 
         List<UserProfileService.CompletedProfile> completedProfiles = service.listCompletedProfiles();
 
-        Assertions.assertEquals(2, completedProfiles.size());
+        Assertions.assertEquals(3, completedProfiles.size());
         Assertions.assertEquals("u_4001", completedProfiles.get(0).getUserId());
-        Assertions.assertEquals("u_4003", completedProfiles.get(1).getUserId());
+        Assertions.assertEquals("u_4002", completedProfiles.get(1).getUserId());
+        Assertions.assertEquals("u_4003", completedProfiles.get(2).getUserId());
     }
 
     @Test

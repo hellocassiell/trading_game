@@ -120,7 +120,7 @@ export default function RecordsPage() {
       submitSuccess: "下單成功",
       tabStatus: "交易狀況",
       tabHistory: "交易記錄",
-      currency: "貨幣 (港幣)",
+      currency: "貨幣 (港元)",
       loadError: "讀取交易數據失敗",
       reload: "重新載入",
       empty: "暫無港股交易記錄",
@@ -145,7 +145,7 @@ export default function RecordsPage() {
       submitSuccess: "下单成功",
       tabStatus: "交易状况",
       tabHistory: "交易记录",
-      currency: "货币 (港币)",
+      currency: "货币 (港元)",
       loadError: "读取交易数据失败",
       reload: "重新载入",
       empty: "暂无港股交易记录",
@@ -224,7 +224,9 @@ export default function RecordsPage() {
   useEffect(() => {
     const cancelledRef = { current: false };
 
-    void loadData(cancelledRef);
+    queueMicrotask(() => {
+      void loadData(cancelledRef);
+    });
 
     return () => {
       cancelledRef.current = true;

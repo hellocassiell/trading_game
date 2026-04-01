@@ -42,8 +42,7 @@ export function localizeStockValueText(value: string, language: AppLanguage) {
   if (language === "zh-Hant") {
     return value
       .replace(/亿港元/g, "億港元")
-      .replace(/万港元/g, "萬港元")
-      .replace(/港币/g, "港幣");
+      .replace(/万港元/g, "萬港元");
   }
 
   const yiMatch = value.match(/^([\d.]+)\s*[亿億]港元$/);
@@ -68,4 +67,3 @@ export function localizeStockValueText(value: string, language: AppLanguage) {
     .replace(/港幣/g, "HKD")
     .replace(/港元/g, "HKD");
 }
-

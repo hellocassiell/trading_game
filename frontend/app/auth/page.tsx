@@ -18,8 +18,8 @@ import { tradingApiClient } from "../../lib/api";
 export default function AuthPage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const viewModel = getAuthEntryViewModel();
-  const leaveConfirmViewModel = getLeaveConfirmViewModel();
+  const viewModel = getAuthEntryViewModel(language);
+  const leaveConfirmViewModel = getLeaveConfirmViewModel(language);
   const copy = byLanguage(language, {
     "zh-Hant": {
       close: "關閉",
@@ -175,13 +175,13 @@ export default function AuthPage() {
     <AppScreen className="!px-0 !pb-0">
       <div className="min-h-[100dvh] bg-[#f1f1f1] text-[#191919]">
         <div className="px-6 pb-[max(env(safe-area-inset-bottom),20px)] pt-[max(env(safe-area-inset-top),20px)]">
-          <div className="relative flex items-center justify-center">
+          <div className="relative flex h-9 items-center justify-center">
             <h1 className="text-[18px] font-semibold text-[#151515]">{viewModel.title}</h1>
             <button
               type="button"
               onClick={() => setShowLeaveConfirm(true)}
               aria-label={copy.close}
-              className="absolute right-0 top-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-[28px] leading-none text-[#212121]"
+              className="absolute right-0 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[28px] leading-none text-[#212121]"
             >
               ×
             </button>

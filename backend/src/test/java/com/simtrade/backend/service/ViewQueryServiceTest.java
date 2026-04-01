@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -225,7 +226,16 @@ class ViewQueryServiceTest {
         Assertions.assertFalse(ranking.isEmpty());
         Assertions.assertEquals(3, ranking.size());
         Assertions.assertEquals("參賽者", ranking.get(2).get("nickname"));
+        Assertions.assertEquals("/avatars/default.svg", ranking.get(2).get("avatar"));
         Assertions.assertEquals(new BigDecimal("1000000.00"), ranking.get(2).get("totalAssets"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> starParticipants = (Map<String, Object>) overview.get("starParticipants");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> starItems = (Map<String, Object>) starParticipants.get("items");
+        Assertions.assertFalse(starItems.isEmpty());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> firstStar = (Map<String, Object>) starItems.values().iterator().next();
+        Assertions.assertEquals("/avatars/default.svg", firstStar.get("avatar"));
         Assertions.assertTrue(overview.containsKey("weeklyFlyers"));
     }
 
@@ -245,6 +255,7 @@ class ViewQueryServiceTest {
         List<Map<String, Object>> items = (List<Map<String, Object>>) rankings.get("items");
         Assertions.assertEquals(2, rankings.get("total"));
         Assertions.assertEquals("Alpha", items.get(0).get("nickname"));
+        Assertions.assertEquals("/avatars/default.svg", items.get(0).get("avatar"));
         Assertions.assertEquals(new BigDecimal("1000000.00"), items.get(0).get("totalAssets"));
         Assertions.assertEquals(Boolean.TRUE, items.get(1).get("isCurrentUser"));
     }
@@ -322,6 +333,51 @@ class ViewQueryServiceTest {
         Assertions.assertFalse(items.isEmpty());
         Assertions.assertEquals("00700", items.get(0).get("stockCode"));
         Assertions.assertEquals(new BigDecimal("4000.00"), items.get(0).get("lossAmount"));
+    }
+
+    @Test
+    void buildAccountPositions_shouldTriggerReadSettlementFallbackWhenEnabled() {
+        ViewQueryService service = new ViewQueryService();
+        OrderService localOrderService = Mockito.mock(OrderService.class);
+        MockDataService localMockDataService = Mockito.mock(MockDataService.class);
+        UserProfileService localUserProfileService = Mockito.mock(UserProfileService.class);
+        AccountLedgerService localLedgerService = Mockito.mock(AccountLedgerService.class);
+
+        ReflectionTestUtils.setField(service, "orderService", localOrderService);
+        ReflectionTestUtils.setField(service, "mockDataService", localMockDataService);
+        ReflectionTestUtils.setField(service, "feeCalculator", new FeeCalculator());
+        ReflectionTestUtils.setField(service, "userProfileService", localUserProfileService);
+        ReflectionTestUtils.setField(service, "accountLedgerService", localLedgerService);
+        ReflectionTestUtils.setField(service, "readSettlementFallbackEnabled", true);
+
+        Mockito.when(localLedgerService.getPositionSnapshots("u_8801")).thenReturn(Collections.emptyMap());
+        Mockito.when(localOrderService.listHistoryOrders("u_8801", null, null)).thenReturn(Collections.emptyList());
+
+        service.buildAccountPositions("u_8801", "zh-Hant");
+
+        Mockito.verify(localLedgerService).processSettlements(LocalDate.now(ZoneId.of("Asia/Hong_Kong")));
+    }
+
+    @Test
+    void buildAccountPositions_shouldSkipReadSettlementFallbackWhenDisabled() {
+        ViewQueryService service = new ViewQueryService();
+        OrderService localOrderService = Mockito.mock(OrderService.class);
+        MockDataService localMockDataService = Mockito.mock(MockDataService.class);
+        UserProfileService localUserProfileService = Mockito.mock(UserProfileService.class);
+        AccountLedgerService localLedgerService = Mockito.mock(AccountLedgerService.class);
+
+        ReflectionTestUtils.setField(service, "orderService", localOrderService);
+        ReflectionTestUtils.setField(service, "mockDataService", localMockDataService);
+        ReflectionTestUtils.setField(service, "feeCalculator", new FeeCalculator());
+        ReflectionTestUtils.setField(service, "userProfileService", localUserProfileService);
+        ReflectionTestUtils.setField(service, "accountLedgerService", localLedgerService);
+        ReflectionTestUtils.setField(service, "readSettlementFallbackEnabled", false);
+
+        Mockito.when(localLedgerService.getPositionSnapshots("u_8802")).thenReturn(new LinkedHashMap<String, AccountLedgerService.PositionSnapshot>());
+
+        service.buildAccountPositions("u_8802", "zh-Hant");
+
+        Mockito.verify(localLedgerService, Mockito.never()).processSettlements(Mockito.any(LocalDate.class));
     }
 
     private Order buildOrder(

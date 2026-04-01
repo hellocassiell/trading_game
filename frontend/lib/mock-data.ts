@@ -231,7 +231,7 @@ export const strongestUsers = [
 
 export const starParticipants = {
   tabs: ["青姐", "沈大师", "英sir"] as const,
-  currencyLabel: "货币 (港币)",
+  currencyLabel: "货币 (港元)",
   items: {
     青姐: {
       featured: {

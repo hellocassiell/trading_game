@@ -3,6 +3,7 @@ package com.simtrade.backend.service;
 import com.simtrade.backend.common.LanguageSupport;
 import com.simtrade.backend.entity.Order;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -49,6 +50,9 @@ public class ViewQueryService {
 
     @Autowired(required = false)
     private MarketDataRealtimeService marketDataRealtimeService = new MarketDataRealtimeService();
+
+    @Value("${app.settlement.read-fallback-enabled:true}")
+    private boolean readSettlementFallbackEnabled = true;
 
     public Map<String, Object> buildAccountProfile(String userId, String language) {
         long dailyBuyUsed = orderService.countTodayBuyOrders(userId);
@@ -363,6 +367,7 @@ public class ViewQueryService {
             item.put("rank", participant.rank);
             item.put("rankMovement", movementLabel(participant.rankDelta));
             item.put("nickname", resolveNickname(participant.userId, language));
+            item.put("avatar", resolveAvatar(participant.userId));
             item.put("totalAssets", participant.totalAssets);
             item.put("changePercent", participant.totalChangePercent);
             item.put("isCurrentUser", safeUser(userId).equals(participant.userId));
@@ -483,6 +488,7 @@ public class ViewQueryService {
             item.put("userId", participant.userId);
             item.put("rank", participant.rank);
             item.put("name", resolveNickname(participant.userId, language));
+            item.put("avatar", resolveAvatar(participant.userId));
             item.put("tag", buildStarTag(participant.rank, language));
             item.put("intro", text(
                     language,
@@ -1171,7 +1177,7 @@ public class ViewQueryService {
     }
 
     private void processSettlementNow() {
-        if (accountLedgerService != null) {
+        if (readSettlementFallbackEnabled && accountLedgerService != null) {
             accountLedgerService.processSettlements(LocalDateTime.now(HK_ZONE).toLocalDate());
         }
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
@@ -110,7 +110,6 @@ function RankingMovement({ movement }: { movement: string }) {
 }
 
 export default function HomePage() {
-  const router = useRouter();
   const { language } = useLanguage();
   const copy = byLanguage(language, {
     "zh-Hant": {
@@ -123,7 +122,7 @@ export default function HomePage() {
       competitionTitle: "智財港股投資大賽2026",
       sponsoredBy: "由 Citi 贊助",
       statsTitle: "賽事統計",
-      currencyHkd: "港幣",
+      currencyHkd: "港元",
       updatedAt: "最後更新",
       heroLine1: "想賺取",
       heroLine2: "HK1,000,000港元模擬交易資金？",
@@ -161,7 +160,7 @@ export default function HomePage() {
       competitionTitle: "智财港股投资大赛2026",
       sponsoredBy: "由 Citi 赞助",
       statsTitle: "赛事统计",
-      currencyHkd: "港币",
+      currencyHkd: "港元",
       updatedAt: "最后更新",
       heroLine1: "想赚取",
       heroLine2: "HK1,000,000港元模拟交易资金？",
@@ -231,7 +230,6 @@ export default function HomePage() {
   const [homeData, setHomeData] = useState(createInitialHomePageData());
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [pageRefreshKey, setPageRefreshKey] = useState(0);
   const [activeStarTab, setActiveStarTab] = useState("");
   const [activeWeeklyTab, setActiveWeeklyTab] = useState("");
@@ -245,13 +243,6 @@ export default function HomePage() {
         setIsLoggedIn(loggedIn);
         setAuthSession(session);
       }
-      if (!loggedIn) {
-        router.replace("/guest");
-        return;
-      }
-      if (!cancelled) {
-        setIsAuthorized(true);
-      }
       const data = await getHomePageData(language, session?.userId);
       if (!cancelled) {
         setHomeData(data);
@@ -261,7 +252,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [language, pageRefreshKey, router]);
+  }, [language, pageRefreshKey]);
 
   const {
     status,
@@ -279,35 +270,35 @@ export default function HomePage() {
     rankingUpdatedAt,
   } = homeData;
 
-  useEffect(() => {
-    if (!homeStarParticipants.tabs.length) {
-      setActiveStarTab("");
-      return;
-    }
-    setActiveStarTab((prev) => (prev && homeStarParticipants.tabs.includes(prev) ? prev : homeStarParticipants.tabs[0]));
-  }, [homeStarParticipants.tabs]);
+  const resolvedActiveStarTab =
+    activeStarTab && homeStarParticipants.tabs.includes(activeStarTab)
+      ? activeStarTab
+      : homeStarParticipants.tabs[0] ?? "";
 
-  useEffect(() => {
-    if (!homeWeeklyFlyers.tabs.length) {
-      setActiveWeeklyTab("");
-      return;
-    }
-    setActiveWeeklyTab((prev) => (prev && homeWeeklyFlyers.tabs.includes(prev) ? prev : homeWeeklyFlyers.tabs[0]));
-  }, [homeWeeklyFlyers.tabs]);
+  const resolvedActiveWeeklyTab =
+    activeWeeklyTab && homeWeeklyFlyers.tabs.includes(activeWeeklyTab)
+      ? activeWeeklyTab
+      : homeWeeklyFlyers.tabs[0] ?? "";
 
   const starFeatured = useMemo(() => {
-    if (!activeStarTab) {
+    if (!resolvedActiveStarTab) {
       return null;
     }
-    return homeStarParticipants.items[activeStarTab] ?? null;
-  }, [activeStarTab, homeStarParticipants.items]);
+    return homeStarParticipants.items[resolvedActiveStarTab] ?? null;
+  }, [resolvedActiveStarTab, homeStarParticipants.items]);
+  const starFeaturedAvatarSrc = resolveAvatarSrc(starFeatured?.avatar ?? "");
+  const starRankingHref = starFeatured?.userId
+    ? `/ranking?userId=${encodeURIComponent(starFeatured.userId)}`
+    : resolvedActiveStarTab
+      ? `/ranking?tab=${encodeURIComponent(resolvedActiveStarTab)}`
+      : "/ranking";
 
   const weeklyFeatured = useMemo(() => {
-    if (!activeWeeklyTab) {
+    if (!resolvedActiveWeeklyTab) {
       return null;
     }
-    return homeWeeklyFlyers.items[activeWeeklyTab] ?? null;
-  }, [activeWeeklyTab, homeWeeklyFlyers.items]);
+    return homeWeeklyFlyers.items[resolvedActiveWeeklyTab] ?? null;
+  }, [resolvedActiveWeeklyTab, homeWeeklyFlyers.items]);
 
   const rankDeltaValue = Number(homeSummaryState.rankRise);
   const rankDeltaLabel = Number.isFinite(rankDeltaValue)
@@ -330,10 +321,6 @@ export default function HomePage() {
     ""
   ).trim();
   const avatarSrc = resolveAvatarSrc(avatarValue);
-
-  if (!isAuthorized) {
-    return null;
-  }
 
   if (status === "loading") {
     return (
@@ -435,7 +422,7 @@ export default function HomePage() {
                 <p className="mt-2 text-[12px] font-bold leading-tight text-[#6d5a45]">
                   {item.label}
                 </p>
-                <p className="mt-1 text-[17px] font-black leading-tight text-[#22160d]">
+                <p className="mt-1 text-[16px] font-black leading-tight text-[#22160d]">
                   {item.primary}
                 </p>
                 {item.secondary ? (
@@ -478,14 +465,19 @@ export default function HomePage() {
         </Link>
 
         {isLoggedIn ? (
-          <section className="overflow-hidden rounded-[24px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
+          <Link
+            href="/profile"
+            className="block overflow-hidden rounded-[24px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]"
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f0ece7]">
                   {avatarSrc ? (
-                    <img
+                    <Image
                       src={avatarSrc}
                       alt={homeSummaryState.name}
+                      width={48}
+                      height={48}
                       className="h-12 w-12 rounded-full object-cover"
                     />
                   ) : (
@@ -548,7 +540,7 @@ export default function HomePage() {
             <p className="mt-3 text-[11px] font-medium text-[#b19573]">
               {copy.dataUpdated} {homeSummaryState.updatedAt}
             </p>
-          </section>
+          </Link>
         ) : null}
 
         <section className="space-y-3">
@@ -561,7 +553,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => setActiveStarTab(tab)}
                 className={`rounded-full px-4 py-2 text-[17px] font-black leading-none ${
-                  tab === activeStarTab ? "bg-[#ffe8c5] text-[#bf7210]" : "bg-[#fff5e7] text-[#c59d6c]"
+                  tab === resolvedActiveStarTab ? "bg-[#ffe8c5] text-[#bf7210]" : "bg-[#fff5e7] text-[#c59d6c]"
                 }`}
               >
                 {tab}
@@ -570,14 +562,24 @@ export default function HomePage() {
           </div>
 
           <Link
-            href="/ranking"
+            href={starRankingHref}
             className="relative block overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white px-4 py-4 shadow-[0_12px_28px_rgba(171,86,0,0.08)]"
           >
             <div className="pointer-events-none absolute -left-6 top-6 h-16 w-16 rounded-full bg-[#f4efe8]" />
             <div className="pointer-events-none absolute -right-8 top-8 h-16 w-16 rounded-full bg-[#faf2e4]" />
 
             <div className="relative flex items-start gap-3">
-              <div className="h-12 w-12 shrink-0 rounded-full bg-[#f0ece7]" />
+              {starFeaturedAvatarSrc ? (
+                <Image
+                  src={starFeaturedAvatarSrc}
+                  alt={starFeatured?.name ?? "star trader"}
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 shrink-0 rounded-full border border-[#f4ddc2] object-cover"
+                />
+              ) : (
+                <div className="h-12 w-12 shrink-0 rounded-full bg-[#f0ece7]" />
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                     <p className="text-[20px] font-black leading-none text-[#26180f]">
@@ -722,7 +724,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => setActiveWeeklyTab(tab)}
                 className={`rounded-full px-4 py-2 text-[17px] font-black leading-none ${
-                  tab === activeWeeklyTab ? "bg-[#ffe8c5] text-[#bf7210]" : "bg-[#fff5e7] text-[#c59d6c]"
+                  tab === resolvedActiveWeeklyTab ? "bg-[#ffe8c5] text-[#bf7210]" : "bg-[#fff5e7] text-[#c59d6c]"
                 }`}
               >
                 {tab}
@@ -765,7 +767,7 @@ export default function HomePage() {
         </section>
 
         <section className="space-y-3">
-          <SectionTitle title={copy.ranking} href="/ranking" moreLabel={copy.more} />
+          <SectionTitle title={copy.ranking} href="/leaderboard" moreLabel={copy.more} />
 
           <div className="overflow-hidden rounded-[26px] border border-[#f4ddc2] bg-white shadow-[0_12px_28px_rgba(171,86,0,0.08)]">
             <div className="grid grid-cols-[auto_1fr_auto] items-end gap-2 border-b border-[#f0e5d8] px-4 pb-3 pt-4">
@@ -784,12 +786,12 @@ export default function HomePage() {
             </div>
 
             <div className="px-4">
-              {homeRankingRows.map((item, index) => (
+              {homeRankingRows.map((item, index) => {
+                const rankingAvatarSrc = resolveAvatarSrc(item.avatar);
+                return (
                 <div
                   key={`${item.rank}-${item.name}`}
-                  className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 py-3 ${
-                    index !== 0 ? "border-t border-[#f5ede2]" : ""
-                  }`}
+                  className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 py-3 ${index !== 0 ? "border-t border-[#f5ede2]" : ""}`}
                 >
                   <div className="flex w-fit items-center gap-2">
                     <RankingMedal rank={item.rank} />
@@ -797,7 +799,17 @@ export default function HomePage() {
                   </div>
 
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-[#f0ece7]" />
+                    {rankingAvatarSrc ? (
+                      <Image
+                        src={rankingAvatarSrc}
+                        alt={item.name}
+                        width={40}
+                        height={40}
+                        className="h-10 w-10 shrink-0 rounded-full border border-[#f2e7da] object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-[#f0ece7]" />
+                    )}
                     <p className="truncate text-[17px] font-black leading-none text-[#2a1b12]">
                       {item.name}
                     </p>
@@ -812,7 +824,8 @@ export default function HomePage() {
                     </p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="px-4 pb-3 pt-2 text-[11px] font-medium text-[#b19573]">{copy.asOf} {rankingUpdatedAt}</div>

@@ -215,7 +215,7 @@ public class UserProfileService {
                 List<UserProfileEntity> dbProfiles = userProfileMapper.selectList(null);
                 if (dbProfiles != null) {
                     for (UserProfileEntity dbProfile : dbProfiles) {
-                        if (dbProfile == null || !isCompletedProfile(dbProfile.getNickname(), dbProfile.getAvatarId())) {
+                        if (dbProfile == null || !isLeaderboardEligibleProfile(dbProfile.getNickname())) {
                             continue;
                         }
                         String safeUserId = normalizeKey(dbProfile.getUserId());
@@ -236,7 +236,7 @@ public class UserProfileService {
         for (Map.Entry<String, UserProfile> entry : profileStore.entrySet()) {
             String safeUserId = normalizeKey(entry.getKey());
             UserProfile profile = entry.getValue();
-            if (safeUserId == null || profile == null || !isCompletedProfile(profile.nickname, profile.avatarId)) {
+            if (safeUserId == null || profile == null || !isLeaderboardEligibleProfile(profile.nickname)) {
                 continue;
             }
             CompletedProfile existing = profileMap.get(safeUserId);
@@ -273,8 +273,8 @@ public class UserProfileService {
         return value.trim();
     }
 
-    private boolean isCompletedProfile(String nickname, String avatarId) {
-        return !isBlank(nickname) && !isBlank(avatarId);
+    private boolean isLeaderboardEligibleProfile(String nickname) {
+        return !isBlank(nickname);
     }
 
     private boolean isBlank(String value) {

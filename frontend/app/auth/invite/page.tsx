@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppScreen from "../../../components/AppScreen";
 import { tradingApiClient } from "../../../lib/api";
@@ -13,57 +14,58 @@ import {
   readAuthSession,
   saveAuthDraft,
   submitRegistrationProfile,
-  uploadRegistrationAvatar,
 } from "../../../lib/adapters/auth";
 import { useLanguage } from "../../../components/LanguageProvider";
 import { byLanguage } from "../../../lib/locale";
-import { resolveAvatarSrc } from "../../../lib/avatar";
+
+function readInviteInitialState() {
+  const draft = readAuthDraft();
+  const avatarId = draft.avatarId && draft.avatarId !== "upload" ? draft.avatarId : "";
+  const showLeaveConfirm =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("modal") === "leave";
+
+  return {
+    avatarId,
+    nickname: draft.nickname ?? "",
+    showLeaveConfirm,
+  };
+}
 
 export default function AuthInvitePage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const viewModel = getInviteViewModel();
-  const leaveConfirmViewModel = getLeaveConfirmViewModel();
+  const viewModel = getInviteViewModel(language);
+  const leaveConfirmViewModel = getLeaveConfirmViewModel(language);
   const copy = byLanguage(language, {
     "zh-Hant": {
       close: "關閉",
-      uploadAvatar: "上傳頭像",
-      uploadingAvatar: "上傳中...",
       submitting: "提交中...",
       sessionExpired: "登入會話已失效，請重新獲取驗證碼",
       saveFailed: "保存註冊資料失敗，請稍後再試",
     },
     "zh-Hans": {
       close: "关闭",
-      uploadAvatar: "上传头像",
-      uploadingAvatar: "上传中...",
       submitting: "提交中...",
       sessionExpired: "登录会话已失效，请重新获取验证码",
       saveFailed: "保存注册资料失败，请稍后再试",
     },
     en: {
       close: "Close",
-      uploadAvatar: "Upload avatar",
-      uploadingAvatar: "Uploading...",
       submitting: "Submitting...",
       sessionExpired: "Session expired. Please request the code again.",
       saveFailed: "Failed to save profile. Please try again later.",
     },
   });
-  const [selectedAvatarId, setSelectedAvatarId] = useState("");
-  const [nickname, setNickname] = useState("");
+  const initialState = readInviteInitialState();
+  const [selectedAvatarId, setSelectedAvatarId] = useState(initialState.avatarId);
+  const [nickname, setNickname] = useState(initialState.nickname);
   const [errorMessage, setErrorMessage] = useState("");
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(initialState.showLeaveConfirm);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const trimmedNickname = nickname.trim();
-  const canConfirm = Boolean(selectedAvatarId && selectedAvatarId !== "upload" && trimmedNickname);
-  const presetAvatarIds = new Set(viewModel.avatars.map((item) => item.id));
-  const uploadedAvatarSrc = selectedAvatarId === "upload" || presetAvatarIds.has(selectedAvatarId)
-    ? null
-    : resolveAvatarSrc(selectedAvatarId);
+  const canConfirm = Boolean(selectedAvatarId && trimmedNickname);
 
   function limitNicknameLength(value: string) {
     return Array.from(value).slice(0, 8).join("");
@@ -75,23 +77,8 @@ export default function AuthInvitePage() {
       router.replace("/auth");
       return;
     }
-    const draft = readAuthDraft();
-    if (draft.avatarId && draft.avatarId !== "upload") {
-      setSelectedAvatarId(draft.avatarId);
-    }
-    if (draft.nickname) {
-      setNickname(draft.nickname);
-    }
     saveAuthDraft({ step: "invite" });
   }, [router]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const params = new URLSearchParams(window.location.search);
-    setShowLeaveConfirm(params.get("modal") === "leave");
-  }, []);
 
   async function handleConfirm() {
     if (!selectedAvatarId) {
@@ -139,28 +126,29 @@ export default function AuthInvitePage() {
     router.push("/");
   }
 
-  async function handleAvatarUpload(file: File) {
-    const prevSession = readAuthSession();
-    const userId = prevSession?.userId;
-    if (!userId) {
-      setErrorMessage(copy.sessionExpired);
-      return;
-    }
-    setUploadingAvatar(true);
-    try {
-      const uploaded = await uploadRegistrationAvatar({ userId, file });
-      const nextAvatarId = uploaded.avatarId || uploaded.avatarUrl;
-      setSelectedAvatarId(nextAvatarId);
-      saveAuthDraft({ avatarId: nextAvatarId, step: "invite" });
-      if (errorMessage) {
-        setErrorMessage("");
-      }
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : copy.saveFailed);
-    } finally {
-      setUploadingAvatar(false);
-    }
-  }
+  // 按当前需求：头像上传入口暂时下线，保留原逻辑注释以便后续恢复。
+  // async function handleAvatarUpload(file: File) {
+  //   const prevSession = readAuthSession();
+  //   const userId = prevSession?.userId;
+  //   if (!userId) {
+  //     setErrorMessage(copy.sessionExpired);
+  //     return;
+  //   }
+  //   setUploadingAvatar(true);
+  //   try {
+  //     const uploaded = await uploadRegistrationAvatar({ userId, file });
+  //     const nextAvatarId = uploaded.avatarId || uploaded.avatarUrl;
+  //     setSelectedAvatarId(nextAvatarId);
+  //     saveAuthDraft({ avatarId: nextAvatarId, step: "invite" });
+  //     if (errorMessage) {
+  //       setErrorMessage("");
+  //     }
+  //   } catch (error) {
+  //     setErrorMessage(error instanceof Error ? error.message : copy.saveFailed);
+  //   } finally {
+  //     setUploadingAvatar(false);
+  //   }
+  // }
 
   return (
     <AppScreen className="!px-0 !pb-0">
@@ -201,9 +189,11 @@ export default function AuthInvitePage() {
                       : "border-[#d2d2d2] bg-[#ece3d5]"
                   }`}
                 >
-                  <img
+                  <Image
                     src={avatar.src}
                     alt={avatar.label}
+                    width={96}
+                    height={96}
                     className="h-full w-full rounded-full object-cover"
                   />
                 </button>
@@ -211,6 +201,8 @@ export default function AuthInvitePage() {
             })}
           </div>
 
+          {/* 按当前需求：头像上传 UI 暂时去掉，保留注释代码供后续恢复。 */}
+          {/*
           <div className="mt-7 flex justify-center">
             <button
               type="button"
@@ -248,6 +240,7 @@ export default function AuthInvitePage() {
               }}
             />
           </div>
+          */}
 
           <div className="mt-14">
             <input

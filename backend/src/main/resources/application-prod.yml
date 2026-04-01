@@ -55,6 +55,12 @@ app:
     db-strict-mode: ${APP_USER_PROFILE_DB_STRICT_MODE:true}
   order:
     redis-strict-mode: ${APP_ORDER_REDIS_STRICT_MODE:true}
+  settlement:
+    scheduler:
+      enabled: ${APP_SETTLEMENT_SCHEDULER_ENABLED:true}
+      cron: ${APP_SETTLEMENT_SCHEDULER_CRON:0 5 6 * * *}
+      zone: ${APP_SETTLEMENT_SCHEDULER_ZONE:Asia/Hong_Kong}
+    read-fallback-enabled: ${APP_SETTLEMENT_READ_FALLBACK_ENABLED:false}
 
 trading:
   hk-holidays: ${TRADING_HK_HOLIDAYS:2026-01-01,2026-02-17,2026-02-18,2026-04-03,2026-04-06,2026-05-01,2026-07-01,2026-10-01,2026-12-25}

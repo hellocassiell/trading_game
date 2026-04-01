@@ -8,7 +8,7 @@ import { byLanguage } from "../../../lib/locale";
 
 export default function AuthPinPage() {
   const { language } = useLanguage();
-  const viewModel = getAuthPinViewModel();
+  const viewModel = getAuthPinViewModel(language);
   const copy = byLanguage(language, {
     "zh-Hant": { close: "關閉" },
     "zh-Hans": { close: "关闭" },

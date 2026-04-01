@@ -1,8 +1,6 @@
 import { getApiBaseUrl } from "./config";
 import { byLanguage, getPreferredLanguage } from "../locale";
 
-const baseUrl = getApiBaseUrl();
-
 type BackendResult<T> = {
   code: number;
   msg: string;
@@ -10,6 +8,7 @@ type BackendResult<T> = {
 };
 
 export async function sendAuthCode(phone: string): Promise<void> {
+  const baseUrl = getApiBaseUrl();
   const language = getPreferredLanguage();
   const errorFallback = byLanguage(language, {
     "zh-Hant": "驗證碼發送失敗",
@@ -54,6 +53,7 @@ export async function verifyAuthCode(
   phone: string,
   code: string,
 ): Promise<VerifyAuthCodeResponse> {
+  const baseUrl = getApiBaseUrl();
   const language = getPreferredLanguage();
   const errorFallback = byLanguage(language, {
     "zh-Hant": "驗證碼校驗失敗",
@@ -79,6 +79,7 @@ export async function verifyAuthCode(
 export async function completeAuthProfile(
   input: CompleteAuthProfileRequest,
 ): Promise<void> {
+  const baseUrl = getApiBaseUrl();
   const language = getPreferredLanguage();
   const errorFallback = byLanguage(language, {
     "zh-Hant": "保存註冊資料失敗",
@@ -108,6 +109,7 @@ export async function uploadAuthAvatar(
   userId: string,
   file: File,
 ): Promise<UploadAuthAvatarResponse> {
+  const baseUrl = getApiBaseUrl();
   const language = getPreferredLanguage();
   const errorFallback = byLanguage(language, {
     "zh-Hant": "頭像上傳失敗",

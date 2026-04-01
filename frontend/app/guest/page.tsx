@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CirclePlay, Gift, ScrollText, X } from "lucide-react";
 import AppScreen from "../../components/AppScreen";
 import {
   getGuestLandingViewModel,
@@ -9,36 +10,56 @@ import {
   readAuthSession,
   type AuthSession,
 } from "../../lib/adapters/auth";
+import {
+  getGuestInfoModalViewModels,
+  resolveGuestInfoModalFromQuery,
+  type GuestInfoModalKey,
+} from "../../lib/adapters/guest-info";
 import { byLanguage } from "../../lib/locale";
 import { useLanguage } from "../../components/LanguageProvider";
 
+function GuestInfoIcon({ modalKey }: { modalKey: GuestInfoModalKey }) {
+  if (modalKey === "seasonPrize") {
+    return <Gift className="h-4 w-4" />;
+  }
+  if (modalKey === "videoIntro") {
+    return <CirclePlay className="h-4 w-4" />;
+  }
+  return <ScrollText className="h-4 w-4" />;
+}
+
+function readGuestInitialState() {
+  const modal =
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("modal");
+
+  return {
+    session: readAuthSession(),
+    showBlocked: modal === "blocked",
+    activeInfoModal: resolveGuestInfoModalFromQuery(modal),
+  };
+}
+
 export default function GuestPage() {
   const { language } = useLanguage();
-  const viewModel = getGuestLandingViewModel();
-  const blockedViewModel = getBlockedViewModel();
+  const viewModel = getGuestLandingViewModel(language);
+  const blockedViewModel = getBlockedViewModel(language);
+  const guestInfoModals = getGuestInfoModalViewModels(language);
   const copy = byLanguage(language, {
-    "zh-Hant": { continueGame: "繼續比賽", identified: "已識別參賽者" },
-    "zh-Hans": { continueGame: "继续比赛", identified: "已识别参赛者" },
-    en: { continueGame: "Continue", identified: "Recognized player" },
+    "zh-Hant": { continueGame: "繼續比賽", identified: "已識別參賽者", close: "關閉" },
+    "zh-Hans": { continueGame: "继续比赛", identified: "已识别参赛者", close: "关闭" },
+    en: { continueGame: "Continue", identified: "Recognized player", close: "Close" },
   });
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [showBlocked, setShowBlocked] = useState(false);
-
-  useEffect(() => {
-    setSession(readAuthSession());
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const params = new URLSearchParams(window.location.search);
-    setShowBlocked(params.get("modal") === "blocked");
-  }, []);
+  const initialState = readGuestInitialState();
+  const [session] = useState<AuthSession | null>(initialState.session);
+  const [showBlocked, setShowBlocked] = useState(initialState.showBlocked);
+  const [activeInfoModal, setActiveInfoModal] = useState<GuestInfoModalKey | null>(initialState.activeInfoModal);
 
   const primaryAction = session
     ? { label: copy.continueGame, href: "/" }
     : viewModel.primaryAction;
+  const activeModalViewModel = activeInfoModal ? guestInfoModals[activeInfoModal] : null;
 
   return (
     <AppScreen className="!px-0 !pb-0">
@@ -92,13 +113,15 @@ export default function GuestPage() {
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             {viewModel.quickActions.map((action) => (
-              <Link
+              <button
                 key={action.label}
-                href={action.href}
-                className="inline-flex h-9 items-center justify-center rounded-full border border-[#ede2d0] bg-white text-[13px] font-semibold text-[#4a6785]"
+                type="button"
+                onClick={() => setActiveInfoModal(action.modalKey)}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-[#ede2d0] bg-white text-[13px] font-semibold text-[#4a6785]"
               >
+                <GuestInfoIcon modalKey={action.modalKey} />
                 {action.label}
-              </Link>
+              </button>
             ))}
           </div>
 
@@ -109,12 +132,13 @@ export default function GuestPage() {
             >
               {primaryAction.label}
             </Link>
-            <Link
-              href={viewModel.rulesAction.href}
+            <button
+              type="button"
+              onClick={() => setActiveInfoModal(viewModel.rulesAction.modalKey)}
               className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold text-[#4f6784]"
             >
               {viewModel.rulesAction.label}
-            </Link>
+            </button>
           </div>
 
           {session ? (
@@ -144,6 +168,92 @@ export default function GuestPage() {
               >
                 {blockedViewModel.actionLabel}
               </button>
+            </div>
+          </div>
+        ) : null}
+
+        {activeModalViewModel ? (
+          <div
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-[rgba(20,20,20,0.42)] px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-10 sm:items-center"
+            onClick={() => setActiveInfoModal(null)}
+          >
+            <div
+              className="pointer-events-auto relative z-[61] w-full max-w-[360px] overflow-hidden rounded-[28px] bg-[#fffaf4] shadow-[0_28px_60px_rgba(41,24,6,0.28)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="relative overflow-hidden bg-[linear-gradient(180deg,#ffb660_0%,#ff9829_62%,#df7700_100%)] px-5 pb-5 pt-5 text-white">
+                <div className="pointer-events-none absolute -right-8 top-3 h-24 w-24 rounded-full bg-white/12" />
+                <div className="pointer-events-none absolute -left-6 bottom-2 h-16 w-16 rounded-full bg-[#ffd08b]/30" />
+                <button
+                  type="button"
+                  onClick={() => setActiveInfoModal(null)}
+                  className="absolute right-4 top-4 z-[62] flex h-8 w-8 items-center justify-center rounded-full bg-white/14 text-white active:bg-white/20"
+                  aria-label={copy.close}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                <p className="relative text-[11px] font-black tracking-[0.18em] text-[#ffe8c0]">
+                  {activeModalViewModel.eyebrow}
+                </p>
+                <h2 className="relative mt-2 pr-10 text-[24px] font-black leading-[1.15]">
+                  {activeModalViewModel.title}
+                </h2>
+                <p className="relative mt-2 text-[14px] leading-[1.5] text-[#fff3dd]">
+                  {activeModalViewModel.description}
+                </p>
+              </div>
+
+              <div className="max-h-[68vh] overflow-y-auto px-5 pb-5 pt-4">
+                <div className="rounded-[18px] border border-[#ffe2b8] bg-[linear-gradient(180deg,#fff7ec_0%,#fff1dd_100%)] px-4 py-3 text-[14px] font-bold leading-[1.5] text-[#ae6200]">
+                  {activeModalViewModel.accent}
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {activeModalViewModel.sections.map((section) => (
+                    <section
+                      key={section.title}
+                      className="rounded-[18px] border border-[#f3e7d9] bg-white px-4 py-3 shadow-[0_10px_20px_rgba(120,78,18,0.04)]"
+                    >
+                      <h3 className="text-[15px] font-black text-[#4a2b11]">{section.title}</h3>
+                      {section.accentRows?.length ? (
+                        <div className="mt-2 space-y-2">
+                          {section.accentRows.map((row) => (
+                            <p
+                              key={row}
+                              className="rounded-[12px] bg-[#fff3df] px-3 py-2 text-[13px] font-bold leading-[1.45] text-[#b66600]"
+                            >
+                              {row}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
+                      {section.rows?.length ? (
+                        <div className="mt-2 space-y-2">
+                          {section.rows.map((row) => (
+                            <div key={row} className="flex items-start gap-2">
+                              <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#f48d22]" />
+                              <p className="text-[13px] leading-[1.5] text-[#6b5641]">{row}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </section>
+                  ))}
+                </div>
+
+                <p className="mt-4 text-[12px] leading-[1.5] text-[#9c8974]">
+                  {activeModalViewModel.footerHint}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveInfoModal(null)}
+                  className="relative z-[62] mt-5 flex h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(90deg,#f48d22_0%,#ef7c00_100%)] text-[15px] font-black text-white shadow-[0_12px_24px_rgba(255,136,26,0.2)]"
+                >
+                  {activeModalViewModel.closeLabel}
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "test": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON --test lib/adapters/*.test.ts",
+    "lint": "eslint ."
   },
   "dependencies": {
     "lucide-react": "^0.511.0",
@@ -15,10 +16,13 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@tailwindcss/postcss": "^4.1.8",
     "@types/node": "^22.15.21",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.2",
     "tailwindcss": "^4.1.8",
     "typescript": "^5.8.3"
   }

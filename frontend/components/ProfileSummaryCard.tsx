@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Bell, Trophy, UserRound } from "lucide-react";
 
 import { useTranslation } from "./LanguageProvider";
@@ -83,9 +84,11 @@ export default function ProfileSummaryCard({
           <div className="flex items-start gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ece7de]">
               {avatarSrc ? (
-                <img
+                <Image
                   src={avatarSrc}
                   alt={resolvedSummary.nickname}
+                  width={48}
+                  height={48}
                   className="h-12 w-12 rounded-full object-cover"
                 />
               ) : (

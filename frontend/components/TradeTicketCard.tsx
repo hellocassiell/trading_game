@@ -301,7 +301,7 @@ export default function TradeTicketCard({
   const { language } = useLanguage();
   const copy = byLanguage(language, {
     "zh-Hant": {
-      currencyUnit: "港幣",
+      currencyUnit: "港元",
       pendingStatus: "排隊中",
       filledStatus: "已成交",
       canceledStatus: "已取消",
@@ -370,7 +370,7 @@ export default function TradeTicketCard({
       noResultHint: "可嘗試輸入代碼、名稱或拼音首字母",
     },
     "zh-Hans": {
-      currencyUnit: "港币",
+      currencyUnit: "港元",
       pendingStatus: "排队中",
       filledStatus: "已成交",
       canceledStatus: "已取消",
@@ -530,26 +530,30 @@ export default function TradeTicketCard({
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    setActiveProduct(product);
-    setSide("buy");
-    setPrice(parseNumericValue(product?.defaultPrice ?? product?.price));
-    setQuantity(parseNumericValue(product?.defaultQuantity ?? "10") || 10);
-    setQuery("");
-    setShowSearch(startWithSearch);
-    setShowConfirm(false);
-    setShowSuccess(false);
-    setShowDetails(variant === "order");
-    setShowCancelConfirm(false);
-    setSubmitError(null);
-    setCancelError(null);
-    setSubmitPending(false);
-    setCancelPending(false);
-    setCurrentOrderStatus(orderStatus);
-    setLastOrderId(null);
+    queueMicrotask(() => {
+      setActiveProduct(product);
+      setSide("buy");
+      setPrice(parseNumericValue(product?.defaultPrice ?? product?.price));
+      setQuantity(parseNumericValue(product?.defaultQuantity ?? "10") || 10);
+      setQuery("");
+      setShowSearch(startWithSearch);
+      setShowConfirm(false);
+      setShowSuccess(false);
+      setShowDetails(variant === "order");
+      setShowCancelConfirm(false);
+      setSubmitError(null);
+      setCancelError(null);
+      setSubmitPending(false);
+      setCancelPending(false);
+      setCurrentOrderStatus(orderStatus);
+      setLastOrderId(null);
+    });
   }, [product, startWithSearch, variant, orderStatus]);
 
   useEffect(() => {
-    setIsTradingHours(isHongKongTradingHours());
+    queueMicrotask(() => {
+      setIsTradingHours(isHongKongTradingHours());
+    });
   }, []);
 
   useEffect(() => {

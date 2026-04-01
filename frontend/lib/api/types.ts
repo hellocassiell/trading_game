@@ -162,7 +162,9 @@ export type HomeEventStatsPayload = {
 };
 
 export type HomeStarParticipantPayload = {
+  userId?: string;
   name: string;
+  avatar?: string;
   tag: string;
   intro: string;
   totalAssets: number;
@@ -198,6 +200,7 @@ export type RankingRowPayload = {
   rank: number;
   rankMovement: "UP" | "DOWN" | "SAME";
   nickname: string;
+  avatar?: string;
   totalAssets: number;
   changePercent: number;
   isCurrentUser?: boolean;
@@ -245,6 +248,7 @@ export type StarTraderLeaderboardItem = {
   userId: string;
   rank: number;
   name: string;
+  avatar?: string;
   tag: string;
   intro: string;
   totalAssets: number;

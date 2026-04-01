@@ -1,4 +1,3 @@
-
 "use client";
 
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
@@ -24,15 +23,10 @@ type LanguageContextValue = {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // Use a stable default during SSR and first client render to avoid hydration mismatch;
-  // then reconcile to stored / browser language after mount.
-  const [language, setLanguageState] = useState<AppLanguage>(DEFAULT_LANGUAGE);
-
-  useEffect(() => {
+  const [language, setLanguageState] = useState<AppLanguage>(() => {
     const stored = readStoredLanguage();
-    const next = stored !== DEFAULT_LANGUAGE ? stored : detectBrowserLanguage();
-    setLanguageState(next);
-  }, []);
+    return stored !== DEFAULT_LANGUAGE ? stored : detectBrowserLanguage();
+  });
 
   useEffect(() => {
     writeStoredLanguage(language);

@@ -1,6 +1,7 @@
 import { completeAuthProfile, sendAuthCode, uploadAuthAvatar, verifyAuthCode } from "../api";
 import { appMeta } from "../app-meta";
-import { byLanguage, getPreferredLanguage } from "../locale";
+import { AppLanguage, byLanguage, DEFAULT_LANGUAGE } from "../locale";
+import type { GuestInfoModalKey } from "./guest-info";
 
 const AUTH_DRAFT_KEY = "trading-game.auth-draft";
 const AUTH_SESSION_KEY = "trading-game.auth-session";
@@ -12,9 +13,9 @@ export type GuestLandingViewModel = {
   prizeLabel: string;
   prizeAmount: string;
   prizeSponsor: string;
-  quickActions: { label: string; href: string }[];
+  quickActions: { label: string; modalKey: GuestInfoModalKey }[];
   primaryAction: { label: string; href: string };
-  rulesAction: { label: string; href: string };
+  rulesAction: { label: string; modalKey: GuestInfoModalKey };
   footerLeft: string;
   footerRight: string;
 };
@@ -90,9 +91,13 @@ export type BlockedViewModel = {
   actionHref: string;
 };
 
-export function getGuestLandingViewModel(): GuestLandingViewModel {
-  const language = getPreferredLanguage();
-  const copy = byLanguage(language, {
+function resolveLanguage(language?: AppLanguage): AppLanguage {
+  return language ?? DEFAULT_LANGUAGE;
+}
+
+export function getGuestLandingViewModel(language?: AppLanguage): GuestLandingViewModel {
+  const resolvedLanguage = resolveLanguage(language);
+  const copy = byLanguage(resolvedLanguage, {
     "zh-Hant": {
       competition: "智財投資大賽\n2026",
       prizeLabel: "冠軍可獲得現金獎",
@@ -130,19 +135,19 @@ export function getGuestLandingViewModel(): GuestLandingViewModel {
     prizeAmount: "HK$1,000,000",
     prizeSponsor: copy.prizeSponsor,
     quickActions: [
-      { label: copy.seasonPrize, href: "/more" },
-      { label: copy.video, href: "/more" },
+      { label: copy.seasonPrize, modalKey: "seasonPrize" },
+      { label: copy.video, modalKey: "videoIntro" },
     ],
     primaryAction: { label: copy.login, href: "/auth/pin" },
-    rulesAction: { label: copy.rules, href: "/more" },
+    rulesAction: { label: copy.rules, modalKey: "competitionRules" },
     footerLeft: `${appMeta.brand}.com LIMITED`,
     footerRight: "All Rights Reserved",
   };
 }
 
-export function getAuthEntryViewModel(): AuthEntryViewModel {
-  const language = getPreferredLanguage();
-  const copy = byLanguage(language, {
+export function getAuthEntryViewModel(language?: AppLanguage): AuthEntryViewModel {
+  const resolvedLanguage = resolveLanguage(language);
+  const copy = byLanguage(resolvedLanguage, {
     "zh-Hant": {
       title: "手機號註冊/登入",
       description: "將發送驗證碼到以下輸入的手機號",
@@ -205,9 +210,9 @@ export function getAuthEntryViewModel(): AuthEntryViewModel {
   };
 }
 
-export function getAuthPinViewModel(): AuthPinViewModel {
-  const language = getPreferredLanguage();
-  const copy = byLanguage(language, {
+export function getAuthPinViewModel(language?: AppLanguage): AuthPinViewModel {
+  const resolvedLanguage = resolveLanguage(language);
+  const copy = byLanguage(resolvedLanguage, {
     "zh-Hant": { centerAction: "手機號\n註冊/登入", phone: "手機", service: "服務", cloud: "雲端", desktop: "桌面" },
     "zh-Hans": { centerAction: "手机号\n注册/登入", phone: "手机", service: "服务", cloud: "云端", desktop: "桌面" },
     en: { centerAction: "Phone\nSign In", phone: "Phone", service: "Service", cloud: "Cloud", desktop: "Desktop" },
@@ -226,9 +231,9 @@ export function getAuthPinViewModel(): AuthPinViewModel {
   };
 }
 
-export function getLeaveConfirmViewModel(): LeaveConfirmViewModel {
-  const language = getPreferredLanguage();
-  const copy = byLanguage(language, {
+export function getLeaveConfirmViewModel(language?: AppLanguage): LeaveConfirmViewModel {
+  const resolvedLanguage = resolveLanguage(language);
+  const copy = byLanguage(resolvedLanguage, {
     "zh-Hant": {
       title: "確認離開註冊流程？",
       description: "已輸入資料將不會保留，離開後需要重新輸入。",
@@ -259,9 +264,9 @@ export function getLeaveConfirmViewModel(): LeaveConfirmViewModel {
   };
 }
 
-export function getInviteViewModel(): InviteViewModel {
-  const language = getPreferredLanguage();
-  const copy = byLanguage(language, {
+export function getInviteViewModel(language?: AppLanguage): InviteViewModel {
+  const resolvedLanguage = resolveLanguage(language);
+  const copy = byLanguage(resolvedLanguage, {
     "zh-Hant": {
       title: "選擇頭像",
       nicknamePlaceholder: "輸入暱稱",
@@ -318,9 +323,9 @@ export function getInviteViewModel(): InviteViewModel {
   };
 }
 
-export function getBlockedViewModel(): BlockedViewModel {
-  const language = getPreferredLanguage();
-  const copy = byLanguage(language, {
+export function getBlockedViewModel(language?: AppLanguage): BlockedViewModel {
+  const resolvedLanguage = resolveLanguage(language);
+  const copy = byLanguage(resolvedLanguage, {
     "zh-Hant": {
       title: "帳戶被封鎖",
       description: "系統檢測到異常交易行為，當前參賽資格已暫停。請聯絡主辦方查詢。",

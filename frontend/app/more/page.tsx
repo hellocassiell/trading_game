@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BellRing,
@@ -15,7 +14,7 @@ import AppScreen from "../../components/AppScreen";
 import ScreenTopBar from "../../components/ScreenTopBar";
 import SurfaceCard from "../../components/SurfaceCard";
 import { useLanguage, useLanguageOptions, useTranslation } from "../../components/LanguageProvider";
-import { clearAuthSession, readAuthSession } from "../../lib/adapters/auth";
+import { clearAuthSession } from "../../lib/adapters/auth";
 
 const quickEntries = [
   {
@@ -28,9 +27,9 @@ const quickEntries = [
 ] as const;
 
 const marketLinks = [
+  { labelKey: "more.market.ranking", href: "/leaderboard" },
   { labelKey: "more.market.topVolume", href: "/market/top-volume" },
   { labelKey: "more.market.topHoldings", href: "/market/top-holdings" },
-  { labelKey: "more.market.topLoserHoldings", href: "/market/top-loser-holdings" },
   { labelKey: "more.market.starTraders", href: "/ranking" },
 ];
 
@@ -61,21 +60,6 @@ export default function MorePage() {
   const { language, setLanguage } = useLanguage();
   const languageOptions = useLanguageOptions();
   const t = useTranslation();
-  const [isAuthorized, setIsAuthorized] = useState(false);
-
-  useEffect(() => {
-    const session = readAuthSession();
-    const loggedIn = Boolean(session?.userId || session?.phone);
-    if (!loggedIn) {
-      router.replace("/guest");
-      return;
-    }
-    setIsAuthorized(true);
-  }, [router]);
-
-  if (!isAuthorized) {
-    return null;
-  }
 
   return (
     <AppScreen>

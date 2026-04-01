@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
+import { readAuthSession } from "../lib/adapters/auth";
 import BottomNav from "./BottomNav";
 
 type AppFrameProps = {
@@ -19,9 +21,27 @@ function shouldHideBottomNav(pathname: string) {
   );
 }
 
+function isPublicRoute(pathname: string) {
+  return pathname === "/guest" || pathname.startsWith("/auth");
+}
+
 export default function AppFrame({ children }: AppFrameProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const hideBottomNav = shouldHideBottomNav(pathname);
+  const publicRoute = isPublicRoute(pathname);
+  const session = readAuthSession();
+  const loggedIn = Boolean(session?.userId || session?.phone);
+
+  useEffect(() => {
+    if (!publicRoute && !loggedIn) {
+      router.replace("/guest");
+    }
+  }, [loggedIn, publicRoute, router]);
+
+  if (!publicRoute && !loggedIn) {
+    return null;
+  }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col overflow-x-hidden bg-transparent">

@@ -1,4 +1,8 @@
-import { getApiBaseUrl, getAuthToken, getStoredUserId } from "./config";
+import {
+  getApiBaseUrl,
+  getAuthToken,
+  getStoredUserId,
+} from "./config";
 import type {
   AccountAssets,
   ActiveOrder,
@@ -57,7 +61,8 @@ async function fetchBackendResult<T>(
 ): Promise<T> {
   const authToken = getAuthToken();
   const language = getPreferredLanguage();
-  const url = new URL(path, getApiBaseUrl());
+  const baseUrl = getApiBaseUrl();
+  const url = new URL(path, baseUrl);
   url.searchParams.set("lang", language);
   const resolvedUserId = userId ?? getStoredUserId();
   const response = await fetch(url.toString(), {
@@ -269,7 +274,8 @@ export const tradingApiClient = {
     }
   ) {
     const language = getPreferredLanguage();
-    const url = new URL("/api/v1/trade/quote/stream", getApiBaseUrl());
+    const baseUrl = getApiBaseUrl();
+    const url = new URL("/api/v1/trade/quote/stream", baseUrl);
     url.searchParams.set("stockCode", normalizeStockCodeForBackend(stockCode));
     url.searchParams.set("lang", language);
 

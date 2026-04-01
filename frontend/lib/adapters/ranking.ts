@@ -1,6 +1,7 @@
 import { tradingApiClient } from "../api";
 import type {
   Position,
+  RankingRowPayload,
   StarTraderLeaderboardItem,
   TopHoldingsLeaderboardItem,
   TopLoserHoldingsLeaderboardItem,
@@ -9,6 +10,11 @@ import type {
 } from "../api/types";
 import type { AppLanguage } from "../locale";
 import { byLanguage } from "../locale";
+import {
+  MAX_LEADERBOARD_ROWS,
+  mapLeaderboardRows,
+  type LeaderboardListRow,
+} from "./leaderboard-list";
 
 type RankingHoldingItem = {
   symbol: string;
@@ -23,6 +29,7 @@ type RankingHoldingItem = {
 
 type RankingFeaturedItem = {
   name: string;
+  avatar: string;
   tag: string;
   intro: string;
   marketValue: string;
@@ -43,6 +50,7 @@ export type RankingPageData = {
   status: ViewStatus;
   starParticipants: {
     tabs: string[];
+    tabByUserId: Record<string, string>;
     currencyLabel: string;
     items: Record<string, RankingTabItem>;
     disclaimer: string;
@@ -67,6 +75,13 @@ export type TopLoserHoldingsPageData = {
   status: ViewStatus;
   rows: Array<{ symbol: string; name: string; loss: string; delta: "▲" | "▼" | "-" }>;
   updatedAt: string;
+};
+
+export type LeaderboardListPageData = {
+  status: ViewStatus;
+  rows: LeaderboardListRow[];
+  updatedAt: string;
+  maxRows: number;
 };
 
 function formatNumber(value: number, fractionDigits = 2) {
@@ -287,6 +302,10 @@ function mapTopLoserHoldingsItem(item: TopLoserHoldingsLeaderboardItem) {
   };
 }
 
+function mapLeaderboardListRows(rows: RankingRowPayload[]) {
+  return mapLeaderboardRows(rows, MAX_LEADERBOARD_ROWS);
+}
+
 function buildRankingTabItem(
   star: StarTraderLeaderboardItem,
   positions: Position[],
@@ -307,6 +326,7 @@ function buildRankingTabItem(
   return {
     featured: {
       name: localized.name,
+      avatar: star.avatar ?? "",
       tag: localized.tag,
       intro: localized.intro,
       marketValue: formatNumber(marketValue, 3),
@@ -323,8 +343,8 @@ function buildRankingTabItem(
 
 function buildRankingEmptyData(lang: AppLanguage): RankingPageData {
   const currencyLabel = byLanguage(lang, {
-    "zh-Hant": "貨幣 (港幣)",
-    "zh-Hans": "货币 (港币)",
+    "zh-Hant": "貨幣 (港元)",
+    "zh-Hans": "货币 (港元)",
     en: "Currency (HKD)",
   });
   const disclaimer = byLanguage(lang, {
@@ -337,6 +357,7 @@ function buildRankingEmptyData(lang: AppLanguage): RankingPageData {
     status: "empty",
     starParticipants: {
       tabs: [],
+      tabByUserId: {},
       currencyLabel,
       items: {},
       disclaimer,
@@ -377,6 +398,15 @@ export function createInitialTopLoserHoldingsPageData(): TopLoserHoldingsPageDat
   };
 }
 
+export function createInitialLeaderboardListPageData(): LeaderboardListPageData {
+  return {
+    status: "loading",
+    rows: [],
+    updatedAt: "--",
+    maxRows: MAX_LEADERBOARD_ROWS,
+  };
+}
+
 export async function getRankingPageData(lang: AppLanguage, userId?: string): Promise<RankingPageData> {
   const empty = buildRankingEmptyData(lang);
   try {
@@ -389,6 +419,7 @@ export async function getRankingPageData(lang: AppLanguage, userId?: string): Pr
     const updatedAt = formatHktTime(payload.updatedAt);
     const summaries = stars.map((item) => localizeStarSummary(item, lang));
     const tabs = summaries.map((summary) => summary.name);
+    const tabByUserId: Record<string, string> = {};
     const positionResults = await Promise.allSettled(
       stars.map((item) => tradingApiClient.getPositions(item.userId))
     );
@@ -400,6 +431,7 @@ export async function getRankingPageData(lang: AppLanguage, userId?: string): Pr
           ? positionResults[index].value
           : [];
       const summary = summaries[index];
+      tabByUserId[item.userId] = summary.name;
       items[summary.name] = buildRankingTabItem(item, positions, lang, updatedAt, summary);
     });
 
@@ -407,6 +439,7 @@ export async function getRankingPageData(lang: AppLanguage, userId?: string): Pr
       status: "success",
       starParticipants: {
         tabs,
+        tabByUserId,
         currencyLabel: empty.starParticipants.currencyLabel,
         items,
         disclaimer: empty.starParticipants.disclaimer,
@@ -478,6 +511,27 @@ export async function getTopLoserHoldingsPageData(): Promise<TopLoserHoldingsPag
       status: "error",
       rows: [],
       updatedAt: "--",
+    };
+  }
+}
+
+export async function getLeaderboardListPageData(userId?: string): Promise<LeaderboardListPageData> {
+  try {
+    const payload = await tradingApiClient.getRankingsLeaderboard(1, MAX_LEADERBOARD_ROWS, userId);
+    const rows = mapLeaderboardListRows(payload.items ?? []);
+
+    return {
+      status: rows.length ? "success" : "empty",
+      rows,
+      updatedAt: formatHktTime(payload.updatedAt),
+      maxRows: MAX_LEADERBOARD_ROWS,
+    };
+  } catch {
+    return {
+      status: "error",
+      rows: [],
+      updatedAt: "--",
+      maxRows: MAX_LEADERBOARD_ROWS,
     };
   }
 }

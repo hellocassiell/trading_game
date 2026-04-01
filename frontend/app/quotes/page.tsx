@@ -12,10 +12,8 @@ import SubTabs from "../../components/SubTabs";
 import { useLanguage } from "../../components/LanguageProvider";
 import {
   createInitialTopHoldingsPageData,
-  createInitialTopLoserHoldingsPageData,
   createInitialTopVolumePageData,
   getTopHoldingsPageData,
-  getTopLoserHoldingsPageData,
   getTopVolumePageData,
 } from "../../lib/adapters/ranking";
 import { byLanguage } from "../../lib/locale";
@@ -25,7 +23,6 @@ export default function QuotesPage() {
   const { language } = useLanguage();
   const [topVolumeData, setTopVolumeData] = useState(createInitialTopVolumePageData());
   const [topHoldingsData, setTopHoldingsData] = useState(createInitialTopHoldingsPageData());
-  const [topLoserData, setTopLoserData] = useState(createInitialTopLoserHoldingsPageData());
   const copy = byLanguage(language, {
     "zh-Hant": {
       title: "報價中心",
@@ -38,14 +35,11 @@ export default function QuotesPage() {
       more: "更多",
       top10: "10大成交",
       top20: "20大持倉",
-      loser: "失敗持倉",
       headerLeft: "10大成交港股",
       amount: "金額",
       holdingWatch: "參賽者持倉觀察",
       topHoldingTitle: "參賽者20大港股持倉",
       topHoldingHint: "龍頭股",
-      topLoserTitle: "參賽者20大失敗持倉",
-      topLoserHint: "觀察風險股",
     },
     "zh-Hans": {
       title: "报价中心",
@@ -58,14 +52,11 @@ export default function QuotesPage() {
       more: "更多",
       top10: "10大成交",
       top20: "20大持仓",
-      loser: "失败持仓",
       headerLeft: "10大成交港股",
       amount: "金额",
       holdingWatch: "参赛者持仓观察",
       topHoldingTitle: "参赛者20大港股持仓",
       topHoldingHint: "龙头股",
-      topLoserTitle: "参赛者20大失败持仓",
-      topLoserHint: "观察风险股",
     },
     en: {
       title: "Quote Center",
@@ -78,14 +69,11 @@ export default function QuotesPage() {
       more: "More",
       top10: "Top 10 Turnover",
       top20: "Top 20 Holdings",
-      loser: "Losing Holdings",
       headerLeft: "Top 10 HK Turnover",
       amount: "Amount",
       holdingWatch: "Holding Watch",
       topHoldingTitle: "Top 20 HK Holdings",
       topHoldingHint: "Leader",
-      topLoserTitle: "Top 20 Losing Holdings",
-      topLoserHint: "Risk Watch",
       loading: "Loading quotes...",
       loadError: "Failed to load leaderboard data",
       empty: "No leaderboard data yet",
@@ -98,19 +86,16 @@ export default function QuotesPage() {
     async function loadData() {
       setTopVolumeData(createInitialTopVolumePageData());
       setTopHoldingsData(createInitialTopHoldingsPageData());
-      setTopLoserData(createInitialTopLoserHoldingsPageData());
 
-      const [volume, holdings, losers] = await Promise.all([
+      const [volume, holdings] = await Promise.all([
         getTopVolumePageData(),
         getTopHoldingsPageData(),
-        getTopLoserHoldingsPageData(),
       ]);
       if (cancelled) {
         return;
       }
       setTopVolumeData(volume);
       setTopHoldingsData(holdings);
-      setTopLoserData(losers);
     }
 
     void loadData();
@@ -121,16 +106,13 @@ export default function QuotesPage() {
 
   const isLoading =
     topVolumeData.status === "loading" ||
-    topHoldingsData.status === "loading" ||
-    topLoserData.status === "loading";
+    topHoldingsData.status === "loading";
   const hasError =
     topVolumeData.status === "error" &&
-    topHoldingsData.status === "error" &&
-    topLoserData.status === "error";
+    topHoldingsData.status === "error";
 
   const topVolume = topVolumeData.buyRows;
   const topHoldings = topHoldingsData.rows;
-  const loserHoldings = topLoserData.rows;
 
   if (isLoading) {
     return (
@@ -154,7 +136,7 @@ export default function QuotesPage() {
     );
   }
 
-  if (topVolume.length === 0 && topHoldings.length === 0 && loserHoldings.length === 0) {
+  if (topVolume.length === 0 && topHoldings.length === 0) {
     return (
       <AppScreen>
         <ScreenTopBar title={copy.title} showBack backHref="/" />
@@ -208,7 +190,6 @@ export default function QuotesPage() {
           tabs={[
             { label: copy.top10, active: true, href: "/market/top-volume" },
             { label: copy.top20, href: "/market/top-holdings" },
-            { label: copy.loser, href: "/market/top-loser-holdings" },
           ]}
         />
       </SurfaceCard>
@@ -237,17 +218,6 @@ export default function QuotesPage() {
                 <p className="text-[11px] font-semibold text-[#4f5d73]">{copy.topHoldingTitle}</p>
                 <p className="mt-0.5 text-[9px] text-[#a3acb9]">
                   {copy.topHoldingHint}：{topHoldings[0]?.symbol ?? "--"} {localizeStockValueText(topHoldings[0]?.value ?? "0 港元", language)}
-                </p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-[#8fa0b6]" />
-            </div>
-          </Link>
-          <Link href="/market/top-loser-holdings" className="block rounded-[10px] border border-[#f1e8dd] bg-[#fffdf9] px-3 py-2.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold text-[#4f5d73]">{copy.topLoserTitle}</p>
-                <p className="mt-0.5 text-[9px] text-[#a3acb9]">
-                  {copy.topLoserHint}：{loserHoldings[0]?.symbol ?? "--"} {localizeStockValueText(loserHoldings[0]?.loss ?? "0 港元", language)}
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 text-[#8fa0b6]" />

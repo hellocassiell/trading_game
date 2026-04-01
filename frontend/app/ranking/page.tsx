@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, UserRound } from "lucide-react";
 
@@ -12,7 +14,9 @@ import {
   createInitialRankingPageData,
   getRankingPageData,
 } from "../../lib/adapters/ranking";
+import { resolvePreferredStarTab } from "../../lib/adapters/star-tab";
 import { byLanguage } from "../../lib/locale";
+import { resolveAvatarSrc } from "../../lib/avatar";
 
 function TrendChart({
   chartLabels,
@@ -66,6 +70,7 @@ function TrendChart({
 }
 
 export default function RankingPage() {
+  const searchParams = useSearchParams();
   const { language } = useLanguage();
   const copy = byLanguage(language, {
     "zh-Hant": {
@@ -85,7 +90,7 @@ export default function RankingPage() {
       pnl: "賺蝕*",
       referenceValue: "參考市值",
       footerUpdatedAt: "更新於",
-      currencyUnit: "港幣",
+      currencyUnit: "港元",
     },
     "zh-Hans": {
       loading: "星级参赛者资料加载中...",
@@ -104,7 +109,7 @@ export default function RankingPage() {
       pnl: "赚蚀*",
       referenceValue: "参考市值",
       footerUpdatedAt: "更新于",
-      currencyUnit: "港币",
+      currencyUnit: "港元",
     },
     en: {
       loading: "Loading star trader data...",
@@ -152,25 +157,25 @@ export default function RankingPage() {
   }, [language, refreshKey]);
 
   const { status, starParticipants } = rankingData;
-  const { tabs, items, currencyLabel, disclaimer, footerUpdatedAt } = starParticipants;
+  const { tabs, tabByUserId, items, currencyLabel, disclaimer, footerUpdatedAt } = starParticipants;
+  const preferredUserId = (searchParams.get("userId") ?? "").trim();
+  const preferredTab = (searchParams.get("tab") ?? "").trim();
 
-  useEffect(() => {
-    if (!tabs.length) {
-      setActiveTab("");
-      return;
-    }
-    setActiveTab((prev) => (prev && tabs.includes(prev) ? prev : tabs[0]));
-  }, [tabs]);
+  const resolvedActiveTab = useMemo(
+    () => resolvePreferredStarTab(tabs, tabByUserId, preferredUserId, preferredTab, activeTab),
+    [tabs, tabByUserId, preferredUserId, preferredTab, activeTab]
+  );
 
   const activeItem = useMemo(() => {
-    if (!activeTab) {
+    if (!resolvedActiveTab) {
       return null;
     }
-    return items[activeTab] ?? null;
-  }, [activeTab, items]);
+    return items[resolvedActiveTab] ?? null;
+  }, [resolvedActiveTab, items]);
   const featured = activeItem?.featured;
   const holdings = activeItem?.holdings ?? [];
   const holdingsTitle = activeItem?.holdingsTitle ?? "";
+  const featuredAvatarSrc = resolveAvatarSrc(featured?.avatar ?? "");
 
   if (status === "loading") {
     return (
@@ -232,7 +237,7 @@ export default function RankingPage() {
                   type="button"
                   onClick={() => setActiveTab(tab)}
                   className={`rounded-full px-3.5 py-1.5 text-body font-black leading-none ${
-                    tab === activeTab ? "bg-[#ffd68d] text-[#9d5b00]" : "bg-[#f2a63a]/45 text-[#ffe7bf]"
+                    tab === resolvedActiveTab ? "bg-[#ffd68d] text-[#9d5b00]" : "bg-[#f2a63a]/45 text-[#ffe7bf]"
                   }`}
                 >
                   {tab}
@@ -248,9 +253,19 @@ export default function RankingPage() {
 
             <div className="relative flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f0ece7] text-[#c9b9a4]">
-                  <UserRound className="h-8 w-8" />
-                </div>
+                {featuredAvatarSrc ? (
+                  <Image
+                    src={featuredAvatarSrc}
+                    alt={featured.name}
+                    width={56}
+                    height={56}
+                    className="h-14 w-14 rounded-full border border-[#f4ddc2] object-cover"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f0ece7] text-[#c9b9a4]">
+                    <UserRound className="h-8 w-8" />
+                  </div>
+                )}
                 <p className="text-number truncate font-black leading-none text-[#24170f]">
                   {featured.name}
                 </p>

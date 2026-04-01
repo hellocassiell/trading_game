@@ -12,24 +12,24 @@ import { TradeTrigger } from "../../../components/TradeModal";
 import { createInitialAssistantSearchData, getAssistantSearchData } from "../../../lib/adapters/assistant";
 import { byLanguage } from "../../../lib/locale";
 
+function readInitialKeyword() {
+  if (typeof window === "undefined") {
+    return "A";
+  }
+  const q = new URLSearchParams(window.location.search).get("q");
+  const next = (q ?? "A").trim();
+  return next || "A";
+}
+
 export default function AssistantResultsPage() {
   const { language } = useLanguage();
-  const [keyword, setKeyword] = useState("A");
+  const [keyword] = useState(readInitialKeyword);
   const [searchData, setSearchData] = useState(createInitialAssistantSearchData(keyword));
   const copy = byLanguage(language, {
     "zh-Hant": { title: "搜尋結果", back: "返回", matched: "匹配", loading: "載入中...", empty: "暫無匹配股票", loadError: "載入失敗" },
     "zh-Hans": { title: "搜索结果", back: "返回", matched: "匹配", loading: "加载中...", empty: "暂无匹配股票", loadError: "加载失败" },
     en: { title: "Search Results", back: "Back", matched: "Match", loading: "Loading...", empty: "No matched stocks", loadError: "Failed to load" },
   });
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const q = new URLSearchParams(window.location.search).get("q");
-    const next = (q ?? "A").trim();
-    setKeyword(next || "A");
-  }, []);
 
   useEffect(() => {
     let cancelled = false;

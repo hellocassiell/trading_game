@@ -12,7 +12,9 @@ type EventStatItem = {
 };
 
 type StarItem = {
+  userId: string;
   name: string;
+  avatar: string;
   tag: string;
   intro: string;
   totalAssets: string;
@@ -44,6 +46,7 @@ type RankingRow = {
   rank: string;
   movement: "up" | "down" | "flat";
   name: string;
+  avatar: string;
   amount: string;
   gain: string;
 };
@@ -231,7 +234,7 @@ function mapEventStats(payload: HomeOverviewPayload, lang: AppLanguage): EventSt
 }
 
 function mapStarParticipants(payload: HomeOverviewPayload): HomePageData["starParticipants"] {
-  const tabs = payload.starParticipants?.tabs ?? [];
+  const tabs = (payload.starParticipants?.tabs ?? []).slice(0, 3);
   const rawItems = payload.starParticipants?.items ?? {};
   const items: Record<string, StarItem> = {};
   for (const tab of tabs) {
@@ -240,7 +243,9 @@ function mapStarParticipants(payload: HomeOverviewPayload): HomePageData["starPa
       continue;
     }
     items[tab] = {
+      userId: source.userId ?? "",
       name: source.name,
+      avatar: source.avatar ?? "",
       tag: source.tag,
       intro: source.intro,
       totalAssets: formatNumber(source.totalAssets, 2),
@@ -338,6 +343,7 @@ function mapRankingRows(payload: HomeOverviewPayload): RankingRow[] {
     rank: String(item.rank),
     movement: item.rankMovement === "UP" ? "up" : item.rankMovement === "DOWN" ? "down" : "flat",
     name: item.nickname,
+    avatar: item.avatar ?? "",
     amount: `HK$${formatNumber(item.totalAssets, 2)}`,
     gain: formatPercent(item.changePercent),
   }));

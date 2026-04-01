@@ -97,10 +97,12 @@
 - 当前补充：`/auth/invite` 已支持真实头像上传（`multipart/form-data`），上传成功后保存后端返回的 `avatarId`，并在首页/个人页通过 adapter 映射渲染
 - 当前补充：当前推荐演示部署路径为 `Vercel + 本地后端 HTTPS 穿透`；前端部署到 Vercel 时，`NEXT_PUBLIC_API_BASE_URL` 必须配置为后端的绝对 `https://` 穿透地址
 - 已有页面：登录、主页、个人、记录、更多、交易链路、排行榜、市场榜单等
+- 当前补充：首页排行榜模块右上角“更多”已改为进入独立 `/leaderboard` 页面，当前最多展示前 100 位；星级参赛者继续使用 `/ranking`
 - 当前事实：暂无前端自动化测试文件；交易链路（搜索/报价/下单/改单/撤单）已通过前端 adapter 对接现有后端接口；`/trade/[symbol]/detail` 已接入实时报价与买卖盘（先拉快照，再通过 SSE 订阅增量）
 - 当前登录前实现约束：`/auth/invite` 是注册选择头像与昵称页，不是邀请好友页；`注册中途离开确认` 与 `账户被封锁` 按设计稿必须做成当前页弹窗，不再落独立路由页；输入场景统一使用设备原生键盘
 - 当前登录前实现约束补充：注册昵称最长 8 个字符，头像与昵称确认后需提交 `/api/v1/auth/profile` 并以后端回读结果作为最终展示来源
 - 当前登录页补充：`/auth` 需包含手机号输入、验证码输入、右侧获取验证码按钮、60 秒倒计时与重新获取逻辑，再进入选择头像页
+- 当前登录前补充：`/guest` 的 `本季奖品`、`影片介绍`、`比赛规则` 均为当前页弹窗，不再跳转到其他页面
 
 ### 后端
 
@@ -113,6 +115,7 @@
 - 当前新增：下单接口支持 `X-Idempotency-Key`（24h 语义幂等）；同 key 同请求返回同一 `orderId`，同 key 不同请求返回 400
 - 当前新增：撮合已支持按订单簿逐级消耗量（逐笔部分成交）+ 价格优先/时间优先；无可用订单簿流动性时回退按盘价撮合
 - 当前新增：已引入 `TradingCalendarService`（周末+可配置 `trading.hk-holidays`）统一交易日与 T+2 计算
+- 当前新增：已补独立 T+2 清算调度入口 `SettlementScheduler`，默认按香港时区每日 06:05 自动执行 `AccountLedgerService.processSettlements(...)`；读接口中的顺手结算目前仍保留为兜底
 - 当前新增：订单主链路（下单/改单/撤单/查询）已改为 DB 优先，不再保留本地订单 in-memory fallback
 - 当前多语：`/api/v1` 控制器统一解析 `X-Lang`/`lang`/`Accept-Language`，核心接口返回 `lang`，错误消息由全局异常处理按语言本地化
 - 当前多语补充：`/api/v1/trade/orders`、`/preview`、`/cancel` 返回体同时包含 `language` 与 `lang` 字段，兼容旧前端并对齐新约定
@@ -125,6 +128,8 @@
 - 当前补充：账本服务新增 `app.ledger.db-strict-mode`（默认 `false`，`application-prod.yml` 默认 `true`）；开启后账本读库失败将直接抛错，不再静默回退到内存
 - 当前补充：用户资料服务新增 `app.user-profile.db-strict-mode`（默认 `false`，`application-prod.yml` 默认 `true`）；开启后用户资料相关读写库失败将直接抛错，不再静默回退到内存
 - 当前补充：订单服务新增 `app.order.redis-strict-mode`（默认 `false`，`application-prod.yml` 默认 `true`）；开启后 Redis 去重/幂等存取失败将直接抛错，不再回退到本地内存
+- 当前补充：结算调度新增 `app.settlement.scheduler.enabled`、`app.settlement.scheduler.cron`、`app.settlement.scheduler.zone`；默认开启，默认 cron 为香港时区每日 `06:05`
+- 当前补充：读接口顺手结算兜底新增 `app.settlement.read-fallback-enabled`；默认 `true` 以兼容当前行为，若独立清算调度稳定可在更真实环境中评估关闭
 - 当前补充：演示环境变量样例 `deploy/env/backend.demo.env.example` 已补 `APP_LEDGER_DB_STRICT_MODE=true`、`APP_USER_PROFILE_DB_STRICT_MODE=true` 与 `APP_ORDER_REDIS_STRICT_MODE=true`，建议保持开启
 - 当前补充：已新增演示环境部署骨架：`backend/Dockerfile`、`backend/src/main/resources/application-prod.yml`、`deploy/docker-compose.demo.yml`、`deploy/nginx/demo.conf`、`deploy/env/backend.demo.env.example`、`deploy/sql/init-demo.sql`、`deploy/scripts/deploy-demo.sh`、`deploy/scripts/smoke-test.sh`
 - 当前补充：已新增 `frontend/Dockerfile`，用于后续服务器同机部署备选方案；当前主演示路径仍以 `Vercel + 本地后端 HTTPS 穿透` 为准
