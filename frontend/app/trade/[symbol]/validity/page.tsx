@@ -1,4 +1,4 @@
-import { TradeConfirmPreview } from "../../../../components/PrototypeStates";
+import TradeTicketCard from "../../../../components/TradeTicketCard";
 import { getTradeProductViewModel } from "../../../../lib/adapters/trade";
 
 type TradeValidityPageProps = {
@@ -12,9 +12,11 @@ export default async function TradeValidityPage({
   const product = await getTradeProductViewModel(symbol);
 
   return (
-    <TradeConfirmPreview
+    <TradeTicketCard
       product={product}
-      title="确认指示（有效至本日收市）"
+      initialStage="confirm"
+      validityMode="today"
+      confirmTitleOverride="确认指示（有效至本日收市）"
     />
   );
 }

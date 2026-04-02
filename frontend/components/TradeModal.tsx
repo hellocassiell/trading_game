@@ -11,6 +11,7 @@ import {
 import TradeTicketCard from "./TradeTicketCard";
 import { byLanguage } from "../lib/locale";
 import { useLanguage } from "./LanguageProvider";
+import type { TradeOrderDetail } from "../lib/api";
 
 type TradeModalVariant = "trade" | "order";
 
@@ -19,6 +20,7 @@ type TradeModalState = {
   variant: TradeModalVariant;
   orderId?: string;
   orderStatus?: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED";
+  orderDetail?: Pick<TradeOrderDetail, "direction" | "price" | "quantity">;
 } | null;
 
 type TradeModalContextValue = {
@@ -26,7 +28,8 @@ type TradeModalContextValue = {
     symbol?: string | null,
     variant?: TradeModalVariant,
     orderId?: string,
-    orderStatus?: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED"
+    orderStatus?: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED",
+    orderDetail?: Pick<TradeOrderDetail, "direction" | "price" | "quantity">
   ) => void;
   closeTrade: () => void;
 };
@@ -44,8 +47,8 @@ export function TradeModalProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<TradeModalContextValue>(
     () => ({
-      openTrade: (symbol, variant = "trade", orderId, orderStatus) =>
-        setState({ symbol, variant, orderId, orderStatus }),
+      openTrade: (symbol, variant = "trade", orderId, orderStatus, orderDetail) =>
+        setState({ symbol, variant, orderId, orderStatus, orderDetail }),
       closeTrade: () => setState(null),
     }),
     []
@@ -69,6 +72,7 @@ export function TradeModalProvider({ children }: { children: ReactNode }) {
               variant={state.variant}
               orderId={state.orderId}
               orderStatus={state.orderStatus}
+              orderDetail={state.orderDetail}
               startWithSearch={!state.symbol}
               onClose={() => setState(null)}
             />
@@ -94,6 +98,7 @@ type TradeTriggerProps = {
   variant?: TradeModalVariant;
   orderId?: string;
   orderStatus?: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED";
+  orderDetail?: Pick<TradeOrderDetail, "direction" | "price" | "quantity">;
   className?: string;
   children: ReactNode;
 };
@@ -103,6 +108,7 @@ export function TradeTrigger({
   variant = "trade",
   orderId,
   orderStatus,
+  orderDetail,
   className = "",
   children,
 }: TradeTriggerProps) {
@@ -111,7 +117,7 @@ export function TradeTrigger({
   return (
     <button
       type="button"
-      onClick={() => openTrade(symbol, variant, orderId, orderStatus)}
+      onClick={() => openTrade(symbol, variant, orderId, orderStatus, orderDetail)}
       className={className}
     >
       {children}

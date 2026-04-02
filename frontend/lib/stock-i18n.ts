@@ -63,7 +63,6 @@ export function localizeStockValueText(value: string, language: AppLanguage) {
   }
 
   return value
-    .replace(/港币/g, "HKD")
     .replace(/港幣/g, "HKD")
     .replace(/港元/g, "HKD");
 }

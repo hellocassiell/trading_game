@@ -1,4 +1,4 @@
-import { TradeSuccessPreview } from "../../../../components/PrototypeStates";
+import TradeTicketCard from "../../../../components/TradeTicketCard";
 import { getTradeProductViewModel } from "../../../../lib/adapters/trade";
 
 type TradeSuccessPageProps = {
@@ -11,5 +11,5 @@ export default async function TradeSuccessPage({
   const { symbol } = await params;
   const product = await getTradeProductViewModel(symbol);
 
-  return <TradeSuccessPreview product={product} />;
+  return <TradeTicketCard product={product} initialStage="success" />;
 }

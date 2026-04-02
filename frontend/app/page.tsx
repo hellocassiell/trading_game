@@ -24,7 +24,7 @@ import type { AuthSession } from "../lib/adapters/auth";
 import { createInitialHomePageData, getHomePageData } from "../lib/adapters/home";
 import { resolveAvatarSrc } from "../lib/avatar";
 import { byLanguage } from "../lib/locale";
-import { useLanguage } from "../components/LanguageProvider";
+import { useLanguage, useLanguageReady } from "../components/LanguageProvider";
 
 function SectionTitle({
   title,
@@ -111,6 +111,7 @@ function RankingMovement({ movement }: { movement: string }) {
 
 export default function HomePage() {
   const { language } = useLanguage();
+  const languageReady = useLanguageReady();
   const copy = byLanguage(language, {
     "zh-Hant": {
       more: "更多",
@@ -235,6 +236,9 @@ export default function HomePage() {
   const [activeWeeklyTab, setActiveWeeklyTab] = useState("");
 
   useEffect(() => {
+    // 等待语言状态就绪后再调用接口
+    if (!languageReady) return;
+
     let cancelled = false;
     async function loadPageData() {
       const session = readAuthSession();
@@ -252,7 +256,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [language, pageRefreshKey]);
+  }, [language, pageRefreshKey, languageReady]);
 
   const {
     status,

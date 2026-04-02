@@ -1,7 +1,7 @@
 export type AppLanguage = "zh-Hant" | "zh-Hans" | "en";
 export type LanguageMap<T> = Record<AppLanguage, T>;
 
-const LANGUAGE_STORAGE_KEY = "trading-game.language";
+export const LANGUAGE_STORAGE_KEY = "trading-game.language";
 export const DEFAULT_LANGUAGE: AppLanguage = "zh-Hant";
 export const SUPPORTED_LANGUAGES: AppLanguage[] = ["zh-Hant", "zh-Hans", "en"];
 
@@ -120,6 +120,14 @@ export function byLanguage<T>(lang: AppLanguage, values: LanguageMap<T>): T {
   return values[lang] ?? values[DEFAULT_LANGUAGE];
 }
 
+export function normalizeAppLanguage(value: string | null | undefined): AppLanguage | null {
+  if (!value) {
+    return null;
+  }
+
+  return SUPPORTED_LANGUAGES.includes(value as AppLanguage) ? (value as AppLanguage) : null;
+}
+
 export function translate(lang: AppLanguage, key: string): string {
   return translations[lang]?.[key] ?? translations[DEFAULT_LANGUAGE][key] ?? key;
 }
@@ -128,14 +136,16 @@ export function readStoredLanguage(): AppLanguage {
   if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
     return DEFAULT_LANGUAGE;
   }
-  const value = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  if (!value) {
-    return DEFAULT_LANGUAGE;
+  const fromStorage = normalizeAppLanguage(window.localStorage.getItem(LANGUAGE_STORAGE_KEY));
+  if (fromStorage) {
+    return fromStorage;
   }
-  if (SUPPORTED_LANGUAGES.includes(value as AppLanguage)) {
-    return value as AppLanguage;
-  }
-  return DEFAULT_LANGUAGE;
+
+  const cookieMatch = document.cookie.match(
+    new RegExp(`(?:^|; )${LANGUAGE_STORAGE_KEY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}=([^;]*)`)
+  );
+  const fromCookie = normalizeAppLanguage(cookieMatch ? decodeURIComponent(cookieMatch[1]) : null);
+  return fromCookie ?? DEFAULT_LANGUAGE;
 }
 
 export function writeStoredLanguage(lang: AppLanguage) {
@@ -143,6 +153,7 @@ export function writeStoredLanguage(lang: AppLanguage) {
     return;
   }
   window.localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+  document.cookie = `${LANGUAGE_STORAGE_KEY}=${encodeURIComponent(lang)}; path=/; max-age=31536000; samesite=lax`;
 }
 
 export function detectBrowserLanguage(acceptLanguage?: string): AppLanguage {

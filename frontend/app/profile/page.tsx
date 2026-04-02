@@ -13,7 +13,7 @@ import {
   mapPositionsToCards,
 } from "../../lib/adapters/portfolio";
 import { byLanguage } from "../../lib/locale";
-import { useLanguage } from "../../components/LanguageProvider";
+import { useLanguage, useLanguageReady } from "../../components/LanguageProvider";
 
 function withHkdPrefix(value: string) {
   return `HK$ ${value}`;
@@ -65,12 +65,16 @@ export default function ProfilePage() {
       note: "* P/L is estimated with average buy price and last HKD price",
     },
   });
+  const languageReady = useLanguageReady();
   const [summary, setSummary] = useState<AccountAssets | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
   const [historyItems, setHistoryItems] = useState<TradeHistoryItem[]>([]);
   const [loadState, setLoadState] = useState<"loading" | "success" | "empty" | "error">("loading");
 
   useEffect(() => {
+    // 等待语言状态就绪后再调用接口
+    if (!languageReady) return;
+
     let cancelled = false;
 
     async function loadData() {
@@ -104,7 +108,7 @@ export default function ProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [languageReady]);
 
   const cards = useMemo(() => mapPositionsToCards(positions), [positions]);
   const summaryView = useMemo(() => {

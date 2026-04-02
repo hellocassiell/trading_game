@@ -32,7 +32,7 @@
 - 如果确认需要暂时偏离 PRD，必须在改动说明和本文件中记录原因。
 - 前端任务遇到设计稿与旧页面实现不一致时，默认以 `UI设计稿/` 为准做高保真还原，不沿用旧实现凑合。
 - `UI设计稿/` 里的两张流程总图和单页截图都属于强约束参考，不能只看其中一张图就自行补完其余页面。
-- 如果 `UI设计稿/` 中仍残留美股文案、美股代码或美元单位，这些只可视为旧版占位内容；落地时必须统一替换为港股语境、港币单位与港股交易规则。
+- 如果 `UI设计稿/` 中仍残留美股文案、美股代码或美元单位，这些只可视为旧版占位内容；落地时必须统一替换为港股语境、港元单位与港股交易规则。
 
 ## 3. 开工前必读顺序
 
@@ -98,7 +98,7 @@
 - 当前补充：当前推荐演示部署路径为 `Vercel + 本地后端 HTTPS 穿透`；前端部署到 Vercel 时，`NEXT_PUBLIC_API_BASE_URL` 必须配置为后端的绝对 `https://` 穿透地址
 - 已有页面：登录、主页、个人、记录、更多、交易链路、排行榜、市场榜单等
 - 当前补充：首页排行榜模块右上角“更多”已改为进入独立 `/leaderboard` 页面，当前最多展示前 100 位；星级参赛者继续使用 `/ranking`
-- 当前事实：暂无前端自动化测试文件；交易链路（搜索/报价/下单/改单/撤单）已通过前端 adapter 对接现有后端接口；`/trade/[symbol]/detail` 已接入实时报价与买卖盘（先拉快照，再通过 SSE 订阅增量）
+- 当前事实：前端已补 adapter 层自动化测试与统一 `npm run test` 入口；交易链路（搜索/报价/下单/改单/撤单）已通过前端 adapter 对接现有后端接口；`/trade/[symbol]/detail` 已接入实时报价与买卖盘（先拉快照，再通过 SSE 订阅增量），且已补 `zh-Hant / zh-Hans / en` 多语展示；`/trade/[symbol]/confirm`、`/edit`、`/success`、`/validity` 已切换为正式 `TradeTicketCard` 实现，不再依赖 `PrototypeStates` 预览壳；`/records` 的 `交易状况` 与 `交易记录` 两个 tab 均可进入订单详情，且非排队中订单会按只读详情展示
 - 当前登录前实现约束：`/auth/invite` 是注册选择头像与昵称页，不是邀请好友页；`注册中途离开确认` 与 `账户被封锁` 按设计稿必须做成当前页弹窗，不再落独立路由页；输入场景统一使用设备原生键盘
 - 当前登录前实现约束补充：注册昵称最长 8 个字符，头像与昵称确认后需提交 `/api/v1/auth/profile` 并以后端回读结果作为最终展示来源
 - 当前登录页补充：`/auth` 需包含手机号输入、验证码输入、右侧获取验证码按钮、60 秒倒计时与重新获取逻辑，再进入选择头像页
@@ -155,8 +155,8 @@
 - 视觉主题必须统一为橙色及橙色衍生色。即使设计稿的旧版画面存在蓝色主色，也只可复用其结构与布局，不可直接照搬蓝色作为最终主主题。
 - 主色替换范围包括但不限于：主按钮、激活态 Tab、重点数值、图表高亮、角标、图标强调、分段控件、浮动交易按钮、榜单强调元素。
 - 所有美股逻辑必须改成港股逻辑，包括但不限于：股票示例、列表标题、币种、报价单位、行情说明、持仓标题、榜单名称、搜索提示、交易说明、跳转文案。
-- 前端文案和展示口径统一使用港股语境，例如：`港股持仓`、`今日10大成交港股`、`参赛者20大港股持仓`、`00700 腾讯控股`、`0388 香港交易所`、`2800 盈富基金`、`HK$ / 港币`。
-- 港股交易界面必须显式体现港股特征：每手股数、按手交易、港币报价、港股代码/简称、交易时段、T+2 结算、涨跌颜色和文案都按港股比赛规则呈现。
+- 前端文案和展示口径统一使用港股语境，例如：`港股持仓`、`今日10大成交港股`、`参赛者20大港股持仓`、`00700 腾讯控股`、`0388 香港交易所`、`2800 盈富基金`、`HK$ / 港元`。
+- 港股交易界面必须显式体现港股特征：每手股数、按手交易、港元报价、港股代码/简称、交易时段、T+2 结算、涨跌颜色和文案都按港股比赛规则呈现。
 - 页面组织优先使用 App Router 路由，通用 UI 抽到 `frontend/components/`。
 - 展示型页面的数据优先走 typed adapter + API（`frontend/lib/adapters/`、`frontend/lib/api/`），避免页面里复制同一份硬编码数据。
 - 页面读取数据时优先经由 `frontend/lib/adapters/` 返回页面所需 view model；对接真实接口时优先经由 `frontend/lib/api/` 发起请求，不要在页面或纯展示组件里直接写 fetch。
@@ -234,17 +234,30 @@
 
 ### 前端默认验证
 
-- 命令：`cd frontend && npm run build`
-- 2026-03-28 实测结果：通过
-- 作用：可同时验证 Next.js 编译、路由构建、基础类型检查
+- 命令：
+  - `cd frontend && npm run test`
+  - `cd frontend && npm run lint`
+  - `cd frontend && npm run build`
+- 2026-04-01 实测结果：通过
+- 作用：
+  - `npm run test`：执行当前前端 adapter 单测（基于 `node:test`）
+  - `npm run lint`：执行 ESLint CLI 非交互校验
+  - `npm run build`：验证 Next.js 编译、路由构建与基础类型检查
 - 演示部署补充：使用 Vercel 时必须配置 `NEXT_PUBLIC_API_BASE_URL=https://<your-https-tunnel-domain>` 与 `NEXT_PUBLIC_DEMO_USER_ID`
 
-### 前端 lint 现状
+### 前端自动化测试现状
 
-- 命令：`cd frontend && npm run lint`
-- 2026-03-28 实测结果：未形成可自动执行链路
-- 原因：当前脚本仍是 `next lint`，仓库尚未初始化 ESLint，会进入交互式配置流程
-- 结论：在补齐 ESLint 配置前，不要把 `npm run lint` 当作稳定自动化校验门禁
+- 当前已存在测试文件：
+  - `frontend/lib/adapters/guest-info.test.ts`
+  - `frontend/lib/adapters/leaderboard-list.test.ts`
+  - `frontend/lib/adapters/ranking.test.ts`
+  - `frontend/lib/adapters/trade-route-pages.test.ts`
+  - `frontend/lib/adapters/realtime-quote-copy.test.ts`
+  - `frontend/lib/adapters/records-page-flow.test.ts`
+  - `frontend/lib/adapters/trade-ticket-order-preset.test.ts`
+  - `frontend/lib/adapters/trade-ticket-state.test.ts`
+- 2026-04-01 当前结果：`npm run test` 可稳定执行，当前共 21 个测试通过
+- 结论：前端已不再是“无自动化测试文件”的状态，但测试覆盖仍集中在 adapter 层，尚未扩展到页面交互或 E2E
 
 ### 后端默认验证
 
@@ -257,7 +270,7 @@
   - `backend/src/test/java/com/simtrade/backend/service/MatchingServiceImplTest.java`
   - `backend/src/test/java/com/simtrade/backend/controller/V1ControllerTest.java`
 - 注意：`V1ControllerTest`（`@WebMvcTest`）已对账务持久化相关 Mapper 使用 `@MockBean`，避免测试上下文误拉起 MyBatis `sqlSessionFactory` 依赖。
-- 2026-04-01 当前环境结果：已实测通过（118 tests）
+- 2026-04-01 当前环境结果：已实测通过（124 tests）
 - 结论：`mvn test` 已可作为后端默认回归入口，但必须显式切到 JDK 17
 
 ### 后端本地启动
@@ -284,11 +297,16 @@
 ### 改动后的执行原则
 
 1. 只改前端页面或样式：
+   - 至少跑 `cd frontend && npm run lint`
    - 至少跑 `cd frontend && npm run build`
 2. 改前端交互或状态逻辑：
+   - 跑 `cd frontend && npm run test`
+   - 跑 `cd frontend && npm run lint`
    - 跑 `cd frontend && npm run build`
    - 手动检查相关页面链路是否可达
 3. 改前端 adapter / API 映射层：
+   - 跑 `cd frontend && npm run test`
+   - 跑 `cd frontend && npm run lint`
    - 跑 `cd frontend && npm run build`
    - 同时核对字段映射、错误态与空态是否仍被页面正确接住
 4. 改后端手续费、订单校验、撮合、结算：
@@ -301,7 +319,7 @@
 
 ## 10. 当前建议优先补强项
 
-- 前端补齐 ESLint，让 `npm run lint` 变成非交互、可自动执行的命令
+- 前端继续扩展自动化覆盖，从 adapter 层逐步补到关键页面交互与 smoke/E2E
 - 后端补充 JDK 17 的固定使用方式（如启动脚本或环境说明），避免误用其他 Java 版本
 - 逐步把 PRD 中的交易规则从文档落到单元测试和集成测试
 - 逐步消除“PRD 接口约定”和“当前代码路径/字段”的偏差
@@ -310,6 +328,11 @@
   - `docs/进度巡检与排期-2026-03-30.md`
   - `docs/交易逻辑细化说明-2026-03-30.md`
   - `docs/跑通验证与未完成清单-2026-03-31.md`
+  - `docs/今日进度与后续计划-2026-04-01.md`
+  - `docs/主流程UI验收清单-2026-04-01.md`
+  - `docs/主页专项对稿清单-2026-04-01.md`
+  - `docs/交易链路专项对稿清单-2026-04-01.md`
+  - `docs/全量主流程与UI总验收-2026-04-01.md`
 
 ## 11. 维护约定
 

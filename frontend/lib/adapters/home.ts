@@ -395,7 +395,7 @@ export function createInitialHomePageData(): HomePageData {
 
 export async function getHomePageData(language: AppLanguage, userId?: string): Promise<HomePageData> {
   try {
-    const overview = await tradingApiClient.getHomeOverview(userId);
+    const overview = await tradingApiClient.getHomeOverview(userId, language);
     const summary = overview.mySummary;
 
     const data: HomePageData = {

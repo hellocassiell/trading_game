@@ -49,6 +49,7 @@ export default function AuthPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [helperMessage, setHelperMessage] = useState("");
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -260,7 +261,13 @@ export default function AuthPage() {
             />
             <span>
               {viewModel.agreementPrefix}
-              <span className="text-[#ef7c00]">{viewModel.agreementLinkLabel}</span>
+              <button
+                type="button"
+                onClick={() => setShowTermsDialog(true)}
+                className="text-[#ef7c00] underline"
+              >
+                {viewModel.agreementLinkLabel}
+              </button>
             </span>
           </label>
 
@@ -310,6 +317,131 @@ export default function AuthPage() {
                   className="rounded-[14px] bg-[linear-gradient(90deg,#f49d38_0%,#ee7d00_100%)] px-4 py-3 text-center text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(230,129,20,0.26)]"
                 >
                   {leaveConfirmViewModel.leaveLabel}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showTermsDialog ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(23,23,23,0.36)] px-6">
+            <div className="max-h-[80vh] w-full max-w-[330px] overflow-hidden rounded-[20px] bg-white shadow-[0_24px_44px_rgba(28,28,28,0.28)]">
+              <div className="border-b border-[#f0f0f0] px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-[18px] font-semibold text-[#151515]">
+                    {language === "zh-Hant" ? "條款與細則" : language === "zh-Hans" ? "条款与细则" : "Terms & Conditions"}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowTermsDialog(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-[24px] text-[#999]"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto px-5 py-4">
+                <div className="space-y-4 text-[14px] leading-[1.6] text-[#333]">
+                  {language === "zh-Hant" ? (
+                    <>
+                      <h3 className="font-semibold">1. 比賽規則</h3>
+                      <p>本港股模擬交易比賽由主辦方舉辦，旨在為參賽者提供高仿真的港股交易體驗。每位參賽者將獲得 1,000,000 港元虛擬資金進行交易。</p>
+
+                      <h3 className="font-semibold">2. 交易規則</h3>
+                      <p>• 交易時段：香港交易日 09:30-12:00、13:00-16:00</p>
+                      <p>• 僅支持限價盤和市價盤</p>
+                      <p>• 必須按手交易，不支持碎股</p>
+                      <p>• 單日買入上限：20 筆</p>
+                      <p>• 限價盤輪候上限：每賬戶最多 5 個</p>
+                      <p>• 結算週期：T+2 營業日</p>
+
+                      <h3 className="font-semibold">3. 費用說明</h3>
+                      <p>每筆交易將收取以下費用：</p>
+                      <p>• 經紀佣金：成交金額的 0.25%，最低 HK$100</p>
+                      <p>• 交易處理費（僅買入）：每手 HK$2.5，範圍 HK$30-200</p>
+                      <p>• 印花稅：成交金額的 0.1%，最低 HK$1</p>
+                      <p>• 交易徵費：成交金額的 0.003%</p>
+                      <p>• 交易費：成交金額的 0.005%</p>
+
+                      <h3 className="font-semibold">4. 風險聲明</h3>
+                      <p>本比賽為模擬交易，所有資金均為虛擬資金，不涉及真實金錢交易。比賽結果僅供參考，不構成任何投資建議。參賽者應理性參與，不得利用比賽進行任何違法活動。</p>
+
+                      <h3 className="font-semibold">5. 個人資料</h3>
+                      <p>主辦方將按照個人資料私隱條例保護參賽者的個人資料，僅用於比賽相關用途，不會向第三方披露。</p>
+
+                      <h3 className="font-semibold">6. 免責聲明</h3>
+                      <p>主辦方保留隨時修改比賽規則的權利，恕不另行通知。如對比賽規則有任何疑問，請聯繫主辦方。</p>
+                    </>
+                  ) : language === "zh-Hans" ? (
+                    <>
+                      <h3 className="font-semibold">1. 比赛规则</h3>
+                      <p>本港股模拟交易比赛由主办方举办，旨在为参赛者提供高仿真的港股交易体验。每位参赛者将获得 1,000,000 港元虚拟资金进行交易。</p>
+
+                      <h3 className="font-semibold">2. 交易规则</h3>
+                      <p>• 交易时段：香港交易日 09:30-12:00、13:00-16:00</p>
+                      <p>• 仅支持限价盘和市价盘</p>
+                      <p>• 必须按手交易，不支持碎股</p>
+                      <p>• 单日买入上限：20 笔</p>
+                      <p>• 限价盘轮候上限：每账户最多 5 个</p>
+                      <p>• 结算周期：T+2 营业日</p>
+
+                      <h3 className="font-semibold">3. 费用说明</h3>
+                      <p>每笔交易将收取以下费用：</p>
+                      <p>• 经纪佣金：成交金额的 0.25%，最低 HK$100</p>
+                      <p>• 交易处理费（仅买入）：每手 HK$2.5，范围 HK$30-200</p>
+                      <p>• 印花税：成交金额的 0.1%，最低 HK$1</p>
+                      <p>• 交易征费：成交金额的 0.003%</p>
+                      <p>• 交易费：成交金额的 0.005%</p>
+
+                      <h3 className="font-semibold">4. 风险声明</h3>
+                      <p>本比赛为模拟交易，所有资金均为虚拟资金，不涉及真实金钱交易。比赛结果仅供参考，不构成任何投资建议。参赛者应理性参与，不得利用比赛进行任何违法活动。</p>
+
+                      <h3 className="font-semibold">5. 个人资料</h3>
+                      <p>主办方将按照个人资料隐私条例保护参赛者的个人资料，仅用于比赛相关用途，不会向第三方披露。</p>
+
+                      <h3 className="font-semibold">6. 免责声明</h3>
+                      <p>主办方保留随时修改比赛规则的权利，恕不另行通知。如对比赛规则有任何疑问，请联系主办方。</p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="font-semibold">1. Competition Rules</h3>
+                      <p>This HK stock simulation trading competition is organized by the organizer to provide participants with a realistic HK stock trading experience. Each participant will receive HK$1,000,000 in virtual funds for trading.</p>
+
+                      <h3 className="font-semibold">2. Trading Rules</h3>
+                      <p>• Trading Hours: HK trading days 09:30-12:00, 13:00-16:00</p>
+                      <p>• Only limit orders and market orders are supported</p>
+                      <p>• Must trade in lots, odd lots not allowed</p>
+                      <p>• Daily buy limit: 20 orders</p>
+                      <p>• Pending limit order limit: Maximum 5 per account</p>
+                      <p>• Settlement cycle: T+2 business days</p>
+
+                      <h3 className="font-semibold">3. Fee Schedule</h3>
+                      <p>Each transaction will incur the following fees:</p>
+                      <p>• Brokerage commission: 0.25% of transaction amount, minimum HK$100</p>
+                      <p>• Trading processing fee (buy only): HK$2.5 per lot, range HK$30-200</p>
+                      <p>• Stamp duty: 0.1% of transaction amount, minimum HK$1</p>
+                      <p>• Trading levy: 0.003% of transaction amount</p>
+                      <p>• Trading fee: 0.005% of transaction amount</p>
+
+                      <h3 className="font-semibold">4. Risk Disclosure</h3>
+                      <p>This competition is a simulation trading, all funds are virtual funds, and do not involve real money transactions. Competition results are for reference only and do not constitute any investment advice. Participants should participate rationally and must not use the competition for any illegal activities.</p>
+
+                      <h3 className="font-semibold">5. Personal Data</h3>
+                      <p>The organizer will protect the personal data of participants in accordance with the Personal Data Privacy Ordinance, and will only use it for competition-related purposes and will not disclose it to third parties.</p>
+
+                      <h3 className="font-semibold">6. Disclaimer</h3>
+                      <p>The organizer reserves the right to modify the competition rules at any time without notice. If you have any questions about the competition rules, please contact the organizer.</p>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="border-t border-[#f0f0f0] px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => setShowTermsDialog(false)}
+                  className="w-full rounded-[14px] bg-[linear-gradient(90deg,#f49d38_0%,#ee7d00_100%)] py-3 text-center text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(230,129,20,0.26)]"
+                >
+                  {language === "zh-Hant" ? "我已知曉" : language === "zh-Hans" ? "我已知晓" : "I Understand"}
                 </button>
               </div>
             </div>

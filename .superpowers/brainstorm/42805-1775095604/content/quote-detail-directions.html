@@ -1,0 +1,201 @@
+<h2>个股详情页改版方向</h2>
+<p class="subtitle">已按你选的“混合方案”做成 3 个具体版本。重点看两个地方：顶部 header 和 K 线区的专业感。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. 终端型混合</div>
+        <div class="mockup-body" style="background:#fff7ed;padding:0">
+          <div style="background:linear-gradient(180deg,#ffb55a 0%,#f28a14 70%,#db6e00 100%);padding:14px 16px 16px;color:#fff;border-bottom-left-radius:22px;border-bottom-right-radius:22px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="width:30px;height:30px;border-radius:999px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;">←</div>
+              <div style="font-size:12px;letter-spacing:.12em;opacity:.88;">港股即时报价</div>
+              <div style="width:30px;height:30px;border-radius:999px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;">⋯</div>
+            </div>
+            <div style="margin-top:12px;display:flex;justify-content:space-between;gap:12px;align-items:flex-end;">
+              <div>
+                <div style="font-size:26px;font-weight:800;line-height:1;">00700</div>
+                <div style="font-size:13px;opacity:.9;margin-top:4px;">腾讯控股</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:30px;font-weight:900;line-height:1;color:#ffe4b5;">HK$ 382.600</div>
+                <div style="font-size:13px;margin-top:6px;color:#fff3d4;">+4.200 / +1.11%</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:14px 16px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+              <div style="background:#fff;border:1px solid #f3dcc0;border-radius:14px;padding:10px 8px;"><div style="font-size:10px;color:#9a8468">今开</div><div style="font-weight:800;margin-top:4px">379.800</div></div>
+              <div style="background:#fff;border:1px solid #f3dcc0;border-radius:14px;padding:10px 8px;"><div style="font-size:10px;color:#9a8468">最高</div><div style="font-weight:800;margin-top:4px">384.000</div></div>
+              <div style="background:#fff;border:1px solid #f3dcc0;border-radius:14px;padding:10px 8px;"><div style="font-size:10px;color:#9a8468">最低</div><div style="font-weight:800;margin-top:4px">377.200</div></div>
+              <div style="background:#fff;border:1px solid #f3dcc0;border-radius:14px;padding:10px 8px;"><div style="font-size:10px;color:#9a8468">昨收</div><div style="font-weight:800;margin-top:4px">378.400</div></div>
+            </div>
+            <div style="background:#fff;border:1px solid #f1dcc3;border-radius:18px;padding:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="font-weight:800">日K</div>
+                <div style="font-size:11px;color:#a08568">5D 1M 3M</div>
+              </div>
+              <svg viewBox="0 0 260 130" style="width:100%;height:130px;background:linear-gradient(180deg,#fffaf4,#fff);border-radius:12px">
+                <line x1="22" y1="20" x2="22" y2="112" stroke="#ead8c3"/>
+                <line x1="22" y1="112" x2="242" y2="112" stroke="#ead8c3"/>
+                <polyline fill="none" stroke="#de7600" stroke-width="2.5" points="26,92 48,86 70,80 92,72 114,76 136,61 158,55 180,63 202,47 224,52"/>
+                <g fill="#f28a14">
+                  <circle cx="26" cy="92" r="2.5"/><circle cx="92" cy="72" r="2.5"/><circle cx="158" cy="55" r="2.5"/><circle cx="224" cy="52" r="2.5"/>
+                </g>
+                <g fill="#ffd59a">
+                  <rect x="34" y="96" width="10" height="16"/><rect x="56" y="89" width="10" height="23"/><rect x="78" y="82" width="10" height="30"/><rect x="100" y="86" width="10" height="26"/><rect x="122" y="74" width="10" height="38"/><rect x="144" y="66" width="10" height="46"/><rect x="166" y="71" width="10" height="41"/><rect x="188" y="58" width="10" height="54"/><rect x="210" y="62" width="10" height="50"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 终端型混合</h3>
+      <p>header 信息一次给全，K 线偏行情终端，最专业，但视觉会更“硬”。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. 平衡推荐</div>
+        <div class="mockup-body" style="background:#fff7ed;padding:0">
+          <div style="background:linear-gradient(180deg,#ffbc6d 0%,#f08a16 62%,#da7100 100%);padding:14px 16px 18px;color:#fff;border-bottom-left-radius:28px;border-bottom-right-radius:28px;position:relative;overflow:hidden;">
+            <div style="position:absolute;right:-10px;top:10px;width:92px;height:92px;border-radius:999px;background:rgba(255,255,255,.12)"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;">←</div>
+              <div style="font-size:12px;letter-spacing:.12em;opacity:.9;">腾讯控股 · 港股报价</div>
+              <div style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;">↗</div>
+            </div>
+            <div style="margin-top:16px;">
+              <div style="display:flex;align-items:end;justify-content:space-between;gap:12px;">
+                <div>
+                  <div style="font-size:30px;font-weight:900;line-height:1;">00700</div>
+                  <div style="font-size:13px;opacity:.92;margin-top:6px;">腾讯控股</div>
+                  <div style="font-size:11px;color:#fff0d2;margin-top:8px;">每手 100 股 · 16:00 HKT</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:34px;font-weight:900;line-height:1;color:#fff7e7;">382.600</div>
+                  <div style="font-size:14px;font-weight:700;margin-top:6px;color:#fff2dc;">+4.200  +1.11%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:14px 16px">
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+              <div style="flex:1;background:#fff;border:1px solid #f2dec6;border-radius:14px;padding:10px 12px"><div style="font-size:10px;color:#9a8568">成交量</div><div style="font-weight:800;margin-top:4px">1,523万</div></div>
+              <div style="flex:1;background:#fff;border:1px solid #f2dec6;border-radius:14px;padding:10px 12px"><div style="font-size:10px;color:#9a8568">成交额</div><div style="font-weight:800;margin-top:4px">45.67亿</div></div>
+              <div style="flex:1;background:#fff;border:1px solid #f2dec6;border-radius:14px;padding:10px 12px"><div style="font-size:10px;color:#9a8568">昨收</div><div style="font-weight:800;margin-top:4px">378.400</div></div>
+            </div>
+            <div style="background:#fff;border:1px solid #f1dcc3;border-radius:20px;padding:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div>
+                  <div style="font-weight:900">日 K 走势</div>
+                  <div style="font-size:11px;color:#9f8b74;margin-top:2px">更像正式行情页，但保留比赛橙色气质</div>
+                </div>
+                <div style="display:flex;gap:6px;font-size:11px">
+                  <span style="background:#ffedd6;color:#d87000;padding:4px 8px;border-radius:999px;font-weight:800">1D</span>
+                  <span style="background:#f6f0e8;color:#9a856f;padding:4px 8px;border-radius:999px">1W</span>
+                  <span style="background:#f6f0e8;color:#9a856f;padding:4px 8px;border-radius:999px">1M</span>
+                </div>
+              </div>
+              <svg viewBox="0 0 260 140" style="width:100%;height:140px;background:linear-gradient(180deg,#fffaf4,#fff);border-radius:14px">
+                <g stroke="#efe2d2" stroke-dasharray="3 4">
+                  <line x1="22" y1="24" x2="240" y2="24"/><line x1="22" y1="56" x2="240" y2="56"/><line x1="22" y1="88" x2="240" y2="88"/><line x1="22" y1="120" x2="240" y2="120"/>
+                </g>
+                <g stroke="#ead8c3">
+                  <line x1="22" y1="16" x2="22" y2="120"/><line x1="22" y1="120" x2="240" y2="120"/>
+                </g>
+                <g>
+                  <line x1="40" y1="78" x2="40" y2="102" stroke="#da7100"/><rect x="36" y="84" width="8" height="14" fill="#f08a16"/>
+                  <line x1="66" y1="62" x2="66" y2="92" stroke="#da7100"/><rect x="62" y="70" width="8" height="18" fill="#f08a16"/>
+                  <line x1="92" y1="58" x2="92" y2="86" stroke="#da7100"/><rect x="88" y="64" width="8" height="16" fill="#f08a16"/>
+                  <line x1="118" y1="40" x2="118" y2="76" stroke="#da7100"/><rect x="114" y="48" width="8" height="20" fill="#f08a16"/>
+                  <line x1="144" y1="52" x2="144" y2="88" stroke="#8fbf8f"/><rect x="140" y="58" width="8" height="22" fill="#2eb568"/>
+                  <line x1="170" y1="34" x2="170" y2="70" stroke="#da7100"/><rect x="166" y="42" width="8" height="18" fill="#f08a16"/>
+                  <line x1="196" y1="28" x2="196" y2="62" stroke="#da7100"/><rect x="192" y="34" width="8" height="20" fill="#f08a16"/>
+                  <line x1="222" y1="36" x2="222" y2="66" stroke="#8fbf8f"/><rect x="218" y="44" width="8" height="16" fill="#2eb568"/>
+                </g>
+                <polyline fill="none" stroke="#6b7280" stroke-width="1.5" points="40,104 66,94 92,82 118,70 144,84 170,64 196,54 222,61"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 平衡推荐</h3>
+      <p>header 更正式，主价格区更稳，K 线像行情页但仍带橙色品牌感。我推荐这个。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. 轻资讯型</div>
+        <div class="mockup-body" style="background:#fff8f1;padding:0">
+          <div style="background:#fff;padding:14px 16px 12px;border-bottom:1px solid #f2e6d6;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="width:30px;height:30px;border-radius:999px;background:#fff4e4;display:flex;align-items:center;justify-content:center;color:#da7100;">←</div>
+              <div style="font-size:15px;font-weight:800;color:#392418;">报价详情</div>
+              <div style="width:30px;height:30px;border-radius:999px;background:#fff4e4;display:flex;align-items:center;justify-content:center;color:#da7100;">☆</div>
+            </div>
+            <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="font-size:26px;font-weight:900;color:#23170e;">00700 腾讯控股</div>
+                <div style="font-size:12px;color:#9d8871;margin-top:5px;">港交所主板 · 即时报价</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:28px;font-weight:900;color:#da7100;">382.600</div>
+                <div style="font-size:12px;color:#2eb568;margin-top:4px;">+4.200 (+1.11%)</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:14px 16px">
+            <div style="background:#fff;border:1px solid #f1dcc3;border-radius:20px;padding:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="font-weight:900">趋势图</div>
+                <div style="font-size:11px;color:#a28d73">更像资讯页</div>
+              </div>
+              <svg viewBox="0 0 260 130" style="width:100%;height:130px;background:#fffdf9;border-radius:14px">
+                <g stroke="#f0e5d7">
+                  <line x1="20" y1="30" x2="240" y2="30"/><line x1="20" y1="65" x2="240" y2="65"/><line x1="20" y1="100" x2="240" y2="100"/>
+                </g>
+                <path d="M20 92 C48 90, 60 70, 84 74 S120 48, 146 58 S190 38, 240 52" fill="none" stroke="#e97a00" stroke-width="3"/>
+                <path d="M20 92 C48 90, 60 70, 84 74 S120 48, 146 58 S190 38, 240 52 L240 118 L20 118 Z" fill="rgba(255,171,74,.16)"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 轻资讯型</h3>
+      <p>header 最正常、最干净，但 K 线更像趋势图，不够“专业行情”。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>我推荐 B 的原因</h4>
+      <ul>
+        <li>顶部不土，也不会太像后台页面</li>
+        <li>K 线读起来像正式行情模块</li>
+        <li>和当前橙色比赛主题最容易统一</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>还需要你拍板的点</h4>
+      <ul>
+        <li>header 要不要保留大面积橙色顶部</li>
+        <li>K 线默认是日K还是分时趋势</li>
+        <li>是否要把买卖盘放在首屏更靠前</li>
+      </ul>
+    </div>
+  </div>
+</div>

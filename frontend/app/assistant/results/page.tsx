@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 
 import AppScreen from "../../../components/AppScreen";
@@ -12,18 +13,10 @@ import { TradeTrigger } from "../../../components/TradeModal";
 import { createInitialAssistantSearchData, getAssistantSearchData } from "../../../lib/adapters/assistant";
 import { byLanguage } from "../../../lib/locale";
 
-function readInitialKeyword() {
-  if (typeof window === "undefined") {
-    return "A";
-  }
-  const q = new URLSearchParams(window.location.search).get("q");
-  const next = (q ?? "A").trim();
-  return next || "A";
-}
-
 export default function AssistantResultsPage() {
+  const searchParams = useSearchParams();
   const { language } = useLanguage();
-  const [keyword] = useState(readInitialKeyword);
+  const keyword = (searchParams.get("q") ?? "A").trim() || "A";
   const [searchData, setSearchData] = useState(createInitialAssistantSearchData(keyword));
   const copy = byLanguage(language, {
     "zh-Hant": { title: "搜尋結果", back: "返回", matched: "匹配", loading: "載入中...", empty: "暫無匹配股票", loadError: "載入失敗" },

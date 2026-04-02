@@ -23,7 +23,7 @@ import type {
   RankingsLeaderboardPayload,
   TradeSearchPayload,
 } from "./types";
-import { byLanguage, getPreferredLanguage } from "../locale";
+import { type AppLanguage, byLanguage, getPreferredLanguage } from "../locale";
 
 type BackendTradeOrderRequest = {
   stockCode: string;
@@ -57,10 +57,11 @@ function toBackendPayload(input: TradeOrderDraft): BackendTradeOrderRequest {
 async function fetchBackendResult<T>(
   path: string,
   init?: RequestInit,
-  userId?: string
+  userId?: string,
+  languageOverride?: AppLanguage
 ): Promise<T> {
   const authToken = getAuthToken();
-  const language = getPreferredLanguage();
+  const language = languageOverride || getPreferredLanguage();
   const baseUrl = getApiBaseUrl();
   const url = new URL(path, baseUrl);
   url.searchParams.set("lang", language);
@@ -127,17 +128,17 @@ export async function placeTradeOrder(
 
 export const tradingApiClient = {
   placeTradeOrder,
-  async getHomeOverview(userId?: string): Promise<HomeOverviewPayload> {
-    return fetchBackendResult<HomeOverviewPayload>("/api/v1/home/overview", undefined, userId);
+  async getHomeOverview(userId?: string, language?: AppLanguage): Promise<HomeOverviewPayload> {
+    return fetchBackendResult<HomeOverviewPayload>("/api/v1/home/overview", undefined, userId, language);
   },
-  async getStarTraders(userId?: string): Promise<StarTradersLeaderboardPayload> {
-    return fetchBackendResult<StarTradersLeaderboardPayload>("/api/v1/leaderboard/star-traders", undefined, userId);
+  async getStarTraders(userId?: string, language?: AppLanguage): Promise<StarTradersLeaderboardPayload> {
+    return fetchBackendResult<StarTradersLeaderboardPayload>("/api/v1/leaderboard/star-traders", undefined, userId, language);
   },
-  async getTopHoldingsLeaderboard(): Promise<TopHoldingsLeaderboardPayload> {
-    return fetchBackendResult<TopHoldingsLeaderboardPayload>("/api/v1/leaderboard/top-holdings");
+  async getTopHoldingsLeaderboard(language?: AppLanguage): Promise<TopHoldingsLeaderboardPayload> {
+    return fetchBackendResult<TopHoldingsLeaderboardPayload>("/api/v1/leaderboard/top-holdings", undefined, undefined, language);
   },
-  async getTopTurnoverLeaderboard(): Promise<TopTurnoverLeaderboardPayload> {
-    return fetchBackendResult<TopTurnoverLeaderboardPayload>("/api/v1/leaderboard/top-turnover");
+  async getTopTurnoverLeaderboard(language?: AppLanguage): Promise<TopTurnoverLeaderboardPayload> {
+    return fetchBackendResult<TopTurnoverLeaderboardPayload>("/api/v1/leaderboard/top-turnover", undefined, undefined, language);
   },
   async getTopLoserHoldingsLeaderboard(): Promise<TopLoserHoldingsLeaderboardPayload> {
     return fetchBackendResult<TopLoserHoldingsLeaderboardPayload>("/api/v1/leaderboard/top-loser-holdings");

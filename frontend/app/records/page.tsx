@@ -372,6 +372,7 @@ export default function RecordsPage() {
                   variant="order"
                   orderId={item.orderId}
                   orderStatus={item.status}
+                  orderDetail={item}
                   className="mx-3 my-2 block rounded-[14px] border border-[#f1e6d8] bg-[#fffdf9] px-3 py-3 text-left active:bg-[#fffaf3]"
                 >
                   <OrderCard item={item} showHint copy={copy} />
@@ -389,12 +390,17 @@ export default function RecordsPage() {
 
                 <div className="divide-y divide-[#efe7dc]">
                   {groupedRecords[date].map((item) => (
-                    <div
+                    <TradeTrigger
                       key={`${item.symbol}-${item.time}-${item.orderId}`}
+                      symbol={item.symbol}
+                      variant="order"
+                      orderId={item.orderId}
+                      orderStatus={item.status}
+                      orderDetail={item}
                       className="mx-3 my-2 rounded-[14px] border border-[#f1e6d8] bg-[#fffdf9] px-3 py-3"
                     >
-                      <OrderCard item={item} showHint={false} copy={copy} />
-                    </div>
+                      <OrderCard item={item} showHint copy={copy} />
+                    </TradeTrigger>
                   ))}
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import { completeAuthProfile, sendAuthCode, uploadAuthAvatar, verifyAuthCode } from "../api";
 import { appMeta } from "../app-meta";
+import { writeAuthSessionCookie } from "../auth-session";
 import { AppLanguage, byLanguage, DEFAULT_LANGUAGE } from "../locale";
 import type { GuestInfoModalKey } from "./guest-info";
 
@@ -407,6 +408,7 @@ export function createAuthSession(session: AuthSession) {
   }
 
   window.localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(session));
+  writeAuthSessionCookie(true);
 }
 
 export function clearAuthSession() {
@@ -415,6 +417,7 @@ export function clearAuthSession() {
   }
 
   window.localStorage.removeItem(AUTH_SESSION_KEY);
+  writeAuthSessionCookie(false);
 }
 
 export async function requestAuthCode(phone: string) {

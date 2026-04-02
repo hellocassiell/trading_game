@@ -6,6 +6,8 @@ import { Activity, ArrowLeft, Wifi, WifiOff } from "lucide-react";
 import AppScreen from "./AppScreen";
 import { tradingApiClient } from "../lib/api";
 import type { QuoteDepthLevel, TradeQuoteSnapshot, TradeQuoteStreamPayload, ViewStatus } from "../lib/api/types";
+import { useLanguage } from "./LanguageProvider";
+import { getRealtimeQuoteCopy } from "../lib/adapters/realtime-quote-copy";
 
 type RealtimeQuoteDetailProps = {
   symbol: string;
@@ -100,6 +102,8 @@ function DepthRows({
 }
 
 export default function RealtimeQuoteDetail({ symbol }: RealtimeQuoteDetailProps) {
+  const { language } = useLanguage();
+  const copy = getRealtimeQuoteCopy(language);
   const [status, setStatus] = useState<ViewStatus>("loading");
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [errorMessage, setErrorMessage] = useState("");
@@ -124,7 +128,7 @@ export default function RealtimeQuoteDetail({ symbol }: RealtimeQuoteDetailProps
           return;
         }
         setStatus("error");
-        setErrorMessage(error instanceof Error ? error.message : "载入报价失败");
+        setErrorMessage(error instanceof Error ? error.message : copy.loadErrorFallback);
       }
 
       unsubscribe = tradingApiClient.subscribeTradeQuote(normalizedSymbol, {
@@ -150,7 +154,7 @@ export default function RealtimeQuoteDetail({ symbol }: RealtimeQuoteDetailProps
         unsubscribe();
       }
     };
-  }, [normalizedSymbol]);
+  }, [normalizedSymbol, copy.loadErrorFallback]);
 
   return (
     <AppScreen className="!px-3 !pb-4">
@@ -162,17 +166,21 @@ export default function RealtimeQuoteDetail({ symbol }: RealtimeQuoteDetailProps
               className="flex items-center gap-1 rounded-full bg-white/75 px-2 py-1 text-[11px] font-black text-[#8c5a25]"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              返回
+              {copy.back}
             </Link>
             <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#8d6f4d]">
               {connection === "live" ? <Wifi className="h-3.5 w-3.5 text-[#0f9d58]" /> : <WifiOff className="h-3.5 w-3.5 text-[#c06b28]" />}
-              {connection === "live" ? "实时连接" : connection === "connecting" ? "连接中" : "已断开"}
+              {connection === "live"
+                ? copy.connection.live
+                : connection === "connecting"
+                  ? copy.connection.connecting
+                  : copy.connection.disconnected}
             </div>
           </div>
 
           <div className="mt-3">
             <p className="text-[11px] font-black text-[#8f7758]">{normalizedSymbol}</p>
-            <p className="mt-1 text-[18px] font-black text-[#2d241a]">{quote?.stockName ?? "载入中..."}</p>
+            <p className="mt-1 text-[18px] font-black text-[#2d241a]">{quote?.stockName ?? copy.loadingName}</p>
           </div>
 
           <div className="mt-2 flex items-end justify-between">
@@ -183,18 +191,18 @@ export default function RealtimeQuoteDetail({ symbol }: RealtimeQuoteDetailProps
               <p className={`text-[12px] font-black ${(quote?.changeAmount ?? 0) >= 0 ? "text-[#e65100]" : "text-[#0f9d58]"}`}>
                 {quote ? `${quote.changeAmount >= 0 ? "+" : ""}${quote.changeAmount} (${quote.changePercent}%)` : "--"}
               </p>
-              <p className="text-[10px] text-[#9b8164]">更新时间 {quote?.updatedAt ?? "--"}</p>
+              <p className="text-[10px] text-[#9b8164]">{copy.updatedAtPrefix} {quote?.updatedAt ?? "--"}</p>
             </div>
           </div>
         </div>
 
         {status === "loading" ? (
-          <div className="rounded-[16px] border border-[#f1dec8] bg-white px-4 py-8 text-center text-[12px] text-[#8f795f]">加载实时报价中...</div>
+          <div className="rounded-[16px] border border-[#f1dec8] bg-white px-4 py-8 text-center text-[12px] text-[#8f795f]">{copy.loading}</div>
         ) : null}
 
         {status === "error" ? (
           <div className="rounded-[16px] border border-[#f4d8c6] bg-[#fff6f1] px-4 py-6 text-center">
-            <p className="text-[12px] font-black text-[#b04a00]">行情加载失败</p>
+            <p className="text-[12px] font-black text-[#b04a00]">{copy.loadErrorTitle}</p>
             <p className="mt-1 text-[11px] text-[#9b785d]">{errorMessage}</p>
           </div>
         ) : null}
@@ -202,20 +210,20 @@ export default function RealtimeQuoteDetail({ symbol }: RealtimeQuoteDetailProps
         {status === "success" && quote ? (
           <>
             <div className="grid grid-cols-2 gap-2.5">
-              <DepthRows title="买盘（Bid）" side="BID" levels={quote.orderBook.bids} />
-              <DepthRows title="卖盘（Ask）" side="ASK" levels={quote.orderBook.asks} />
+              <DepthRows title={copy.bidDepthTitle} side="BID" levels={quote.orderBook.bids} />
+              <DepthRows title={copy.askDepthTitle} side="ASK" levels={quote.orderBook.asks} />
             </div>
 
             <div className="rounded-[16px] border border-[#f1ddc5] bg-white p-3">
               <div className="flex items-center gap-1.5 text-[11px] font-black text-[#8f7758]">
                 <Activity className="h-3.5 w-3.5 text-[#d87410]" />
-                行情说明
+                {copy.marketNoteTitle}
               </div>
               <p className="mt-2 text-[11px] leading-relaxed text-[#6e5b45]">
-                当前页已接入实时推送，盘口与最新价会随行情消息刷新。若连接中断将自动保留最后一次快照。
+                {copy.marketNoteBody}
               </p>
               <div className="mt-2 text-[10px] text-[#9a8368]">
-                来源：{quote.source} / 序列：{quote.orderBook.sequence}
+                {copy.sourcePrefix}：{quote.source} / {copy.sequencePrefix}：{quote.orderBook.sequence}
               </div>
             </div>
           </>
@@ -223,8 +231,8 @@ export default function RealtimeQuoteDetail({ symbol }: RealtimeQuoteDetailProps
 
         {status === "success" && quote && quote.orderBook.bids.length === 0 && quote.orderBook.asks.length === 0 ? (
           <div className="rounded-[16px] border border-[#f2e2cf] bg-[#fffaf4] px-4 py-6 text-center">
-            <p className="text-[12px] font-black text-[#8f7758]">暂无盘口数据</p>
-            <p className="mt-1 text-[10px] text-[#a28769]">等待行情推送后将自动显示买卖盘变化</p>
+            <p className="text-[12px] font-black text-[#8f7758]">{copy.emptyDepthTitle}</p>
+            <p className="mt-1 text-[10px] text-[#a28769]">{copy.emptyDepthHint}</p>
           </div>
         ) : null}
       </div>

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CirclePlay, Gift, ScrollText, X } from "lucide-react";
 import AppScreen from "../../components/AppScreen";
 import {
   getGuestLandingViewModel,
   getBlockedViewModel,
   readAuthSession,
-  type AuthSession,
 } from "../../lib/adapters/auth";
 import {
   getGuestInfoModalViewModels,
@@ -17,6 +17,10 @@ import {
 } from "../../lib/adapters/guest-info";
 import { byLanguage } from "../../lib/locale";
 import { useLanguage } from "../../components/LanguageProvider";
+
+function subscribeToClientRender() {
+  return () => {};
+}
 
 function GuestInfoIcon({ modalKey }: { modalKey: GuestInfoModalKey }) {
   if (modalKey === "seasonPrize") {
@@ -28,20 +32,9 @@ function GuestInfoIcon({ modalKey }: { modalKey: GuestInfoModalKey }) {
   return <ScrollText className="h-4 w-4" />;
 }
 
-function readGuestInitialState() {
-  const modal =
-    typeof window === "undefined"
-      ? null
-      : new URLSearchParams(window.location.search).get("modal");
-
-  return {
-    session: readAuthSession(),
-    showBlocked: modal === "blocked",
-    activeInfoModal: resolveGuestInfoModalFromQuery(modal),
-  };
-}
-
 export default function GuestPage() {
+  const searchParams = useSearchParams();
+  const isClient = useSyncExternalStore(subscribeToClientRender, () => true, () => false);
   const { language } = useLanguage();
   const viewModel = getGuestLandingViewModel(language);
   const blockedViewModel = getBlockedViewModel(language);
@@ -51,10 +44,15 @@ export default function GuestPage() {
     "zh-Hans": { continueGame: "继续比赛", identified: "已识别参赛者", close: "关闭" },
     en: { continueGame: "Continue", identified: "Recognized player", close: "Close" },
   });
-  const initialState = readGuestInitialState();
-  const [session] = useState<AuthSession | null>(initialState.session);
-  const [showBlocked, setShowBlocked] = useState(initialState.showBlocked);
-  const [activeInfoModal, setActiveInfoModal] = useState<GuestInfoModalKey | null>(initialState.activeInfoModal);
+  const session = isClient ? readAuthSession() : null;
+  const modal = isClient ? searchParams.get("modal") : null;
+  const [blockedOverride, setBlockedOverride] = useState<boolean | null>(null);
+  const [activeInfoModalOverride, setActiveInfoModalOverride] = useState<GuestInfoModalKey | null | undefined>(undefined);
+  const showBlocked = blockedOverride ?? (modal === "blocked");
+  const activeInfoModal =
+    activeInfoModalOverride === undefined
+      ? resolveGuestInfoModalFromQuery(modal)
+      : activeInfoModalOverride;
 
   const primaryAction = session
     ? { label: copy.continueGame, href: "/" }
@@ -116,7 +114,7 @@ export default function GuestPage() {
               <button
                 key={action.label}
                 type="button"
-                onClick={() => setActiveInfoModal(action.modalKey)}
+                onClick={() => setActiveInfoModalOverride(action.modalKey)}
                 className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-[#ede2d0] bg-white text-[13px] font-semibold text-[#4a6785]"
               >
                 <GuestInfoIcon modalKey={action.modalKey} />
@@ -134,7 +132,7 @@ export default function GuestPage() {
             </Link>
             <button
               type="button"
-              onClick={() => setActiveInfoModal(viewModel.rulesAction.modalKey)}
+              onClick={() => setActiveInfoModalOverride(viewModel.rulesAction.modalKey)}
               className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold text-[#4f6784]"
             >
               {viewModel.rulesAction.label}
@@ -163,7 +161,7 @@ export default function GuestPage() {
               <p className="mt-2 text-center text-[16px] leading-[1.5] text-[#666]">{blockedViewModel.description}</p>
               <button
                 type="button"
-                onClick={() => setShowBlocked(false)}
+                onClick={() => setBlockedOverride(false)}
                 className="mt-7 flex w-full items-center justify-center rounded-[14px] bg-[linear-gradient(90deg,#f49d38_0%,#ee7d00_100%)] px-4 py-3 text-[16px] font-semibold text-white shadow-[0_12px_24px_rgba(230,129,20,0.26)]"
               >
                 {blockedViewModel.actionLabel}
@@ -175,7 +173,7 @@ export default function GuestPage() {
         {activeModalViewModel ? (
           <div
             className="fixed inset-0 z-[60] flex items-end justify-center bg-[rgba(20,20,20,0.42)] px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-10 sm:items-center"
-            onClick={() => setActiveInfoModal(null)}
+            onClick={() => setActiveInfoModalOverride(null)}
           >
             <div
               className="pointer-events-auto relative z-[61] w-full max-w-[360px] overflow-hidden rounded-[28px] bg-[#fffaf4] shadow-[0_28px_60px_rgba(41,24,6,0.28)]"
@@ -186,7 +184,7 @@ export default function GuestPage() {
                 <div className="pointer-events-none absolute -left-6 bottom-2 h-16 w-16 rounded-full bg-[#ffd08b]/30" />
                 <button
                   type="button"
-                  onClick={() => setActiveInfoModal(null)}
+                  onClick={() => setActiveInfoModalOverride(null)}
                   className="absolute right-4 top-4 z-[62] flex h-8 w-8 items-center justify-center rounded-full bg-white/14 text-white active:bg-white/20"
                   aria-label={copy.close}
                 >
@@ -248,7 +246,7 @@ export default function GuestPage() {
 
                 <button
                   type="button"
-                  onClick={() => setActiveInfoModal(null)}
+                  onClick={() => setActiveInfoModalOverride(null)}
                   className="relative z-[62] mt-5 flex h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(90deg,#f48d22_0%,#ef7c00_100%)] text-[15px] font-black text-white shadow-[0_12px_24px_rgba(255,136,26,0.2)]"
                 >
                   {activeModalViewModel.closeLabel}

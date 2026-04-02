@@ -186,14 +186,14 @@ export default function LeaderboardPage() {
           <p className="pb-4 text-[14px] font-medium text-[#ffecce]">{copy.subtitle}</p>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-b border-[#ece3d8] px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-[#ece3d8] px-3 py-3">
           <p className="text-helper font-semibold text-[#a88d6d]">{copy.limitHint}</p>
           <p className="text-helper text-right text-[#b5a89a]">
             {copy.updatedAt} {updatedAt}
           </p>
         </div>
 
-        <div className="grid grid-cols-[auto_1fr_auto] items-end gap-2 border-b border-[#f0e5d8] px-4 pb-3 pt-4">
+        <div className="grid grid-cols-[auto_1fr_auto] items-end gap-2 border-b border-[#f0e5d8] px-3 pb-3 pt-4">
           <div>
             <p className="text-[14px] font-bold text-[#aa9781]">{copy.rankMove}</p>
             <p className="mt-1 text-[15px] font-bold text-[#aa9781]">{copy.participant}</p>
@@ -205,13 +205,13 @@ export default function LeaderboardPage() {
           </div>
         </div>
 
-        <div className="bg-white px-4">
+        <div className="bg-white px-3">
           {rows.map((item, index) => {
             const avatarSrc = resolveAvatarSrc(item.avatar);
             return (
               <div key={`${item.rank}-${item.name}`} className={index !== 0 ? "border-t border-[#f5ede2]" : ""}>
               <div
-                className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-[18px] px-3 py-3 ${
+                className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-[18px] px-2 py-3 ${
                   item.isCurrentUser ? "bg-[#fff7ed] ring-1 ring-inset ring-[#f4d8b8]" : ""
                 }`}
               >

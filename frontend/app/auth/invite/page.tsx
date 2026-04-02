@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppScreen from "../../../components/AppScreen";
 import { tradingApiClient } from "../../../lib/api";
 import {
@@ -18,22 +18,14 @@ import {
 import { useLanguage } from "../../../components/LanguageProvider";
 import { byLanguage } from "../../../lib/locale";
 
-function readInviteInitialState() {
-  const draft = readAuthDraft();
-  const avatarId = draft.avatarId && draft.avatarId !== "upload" ? draft.avatarId : "";
-  const showLeaveConfirm =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("modal") === "leave";
-
-  return {
-    avatarId,
-    nickname: draft.nickname ?? "",
-    showLeaveConfirm,
-  };
+function subscribeToClientRender() {
+  return () => {};
 }
 
 export default function AuthInvitePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isClient = useSyncExternalStore(subscribeToClientRender, () => true, () => false);
   const { language } = useLanguage();
   const viewModel = getInviteViewModel(language);
   const leaveConfirmViewModel = getLeaveConfirmViewModel(language);
@@ -57,12 +49,19 @@ export default function AuthInvitePage() {
       saveFailed: "Failed to save profile. Please try again later.",
     },
   });
-  const initialState = readInviteInitialState();
-  const [selectedAvatarId, setSelectedAvatarId] = useState(initialState.avatarId);
-  const [nickname, setNickname] = useState(initialState.nickname);
+  const draft = useMemo(() => (isClient ? readAuthDraft() : {}), [isClient]);
+  const draftAvatarId = draft.avatarId && draft.avatarId !== "upload" ? draft.avatarId : "";
+  const draftNickname = draft.nickname ?? "";
+  const queryWantsLeaveConfirm = isClient && searchParams.get("modal") === "leave";
+  const [selectedAvatarIdOverride, setSelectedAvatarIdOverride] = useState<string | null>(null);
+  const [nicknameOverride, setNicknameOverride] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(initialState.showLeaveConfirm);
+  const [showLeaveConfirmOverride, setShowLeaveConfirmOverride] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const selectedAvatarId = selectedAvatarIdOverride ?? draftAvatarId;
+  const nickname = nicknameOverride ?? draftNickname;
+  const showLeaveConfirm = showLeaveConfirmOverride ?? queryWantsLeaveConfirm;
 
   const trimmedNickname = nickname.trim();
   const canConfirm = Boolean(selectedAvatarId && trimmedNickname);
@@ -157,7 +156,7 @@ export default function AuthInvitePage() {
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => setShowLeaveConfirm(true)}
+              onClick={() => setShowLeaveConfirmOverride(true)}
               aria-label={copy.close}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#8d8d8d] text-[18px] leading-none text-white"
             >
@@ -176,7 +175,7 @@ export default function AuthInvitePage() {
                   key={avatar.id}
                   type="button"
                   onClick={() => {
-                    setSelectedAvatarId(avatar.id);
+                    setSelectedAvatarIdOverride(avatar.id);
                     saveAuthDraft({ avatarId: avatar.id, step: "invite" });
                     if (errorMessage) {
                       setErrorMessage("");
@@ -247,7 +246,7 @@ export default function AuthInvitePage() {
               value={nickname}
               onChange={(event) => {
                 const nextNickname = limitNicknameLength(event.target.value);
-                setNickname(nextNickname);
+                setNicknameOverride(nextNickname);
                 saveAuthDraft({ nickname: nextNickname, step: "invite" });
                 if (errorMessage) {
                   setErrorMessage("");
@@ -294,7 +293,7 @@ export default function AuthInvitePage() {
               <div className="mt-7 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowLeaveConfirm(false)}
+                  onClick={() => setShowLeaveConfirmOverride(false)}
                   className="rounded-[14px] border border-[#e1e1e1] bg-white px-4 py-3 text-center text-[16px] font-medium text-[#575757]"
                 >
                   {leaveConfirmViewModel.cancelLabel}

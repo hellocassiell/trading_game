@@ -33,10 +33,8 @@ export type TradeSearchItem = {
 };
 
 function displayStockCode(stockCode: string) {
+  // 港股代码应该保持5位数字，不去掉前导零
   const normalized = stockCode.trim().toUpperCase().replace(/\.HK$/, "");
-  if (/^0\d{4}$/.test(normalized)) {
-    return normalized.slice(1);
-  }
   return normalized;
 }
 

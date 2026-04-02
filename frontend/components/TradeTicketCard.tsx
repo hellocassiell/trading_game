@@ -25,7 +25,14 @@ import {
   submitTradeOrder,
 } from "../lib/adapters/trade";
 import { tradingApiClient } from "../lib/api";
-import type { TradeOrderType, TradeSide } from "../lib/api/types";
+import type { TradeOrderStatus, TradeOrderType, TradeSide } from "../lib/api/types";
+import {
+  canAmendOrder,
+  resolveOrderDetailActionState,
+  resolveTradeTicketInitialState,
+  type TradeTicketStage,
+} from "../lib/adapters/trade-ticket-state";
+import { resolveTradeTicketOrderPreset } from "../lib/adapters/trade-ticket-order-preset";
 import { useLanguage } from "./LanguageProvider";
 import { byLanguage } from "../lib/locale";
 
@@ -54,7 +61,15 @@ type TradeTicketCardProps = {
   variant?: "trade" | "order";
   startWithSearch?: boolean;
   orderId?: string;
-  orderStatus?: "PENDING" | "PARTIAL_FILLED" | "FILLED" | "CANCELED" | "REJECTED";
+  orderStatus?: TradeOrderStatus;
+  orderDetail?: {
+    direction: TradeSide;
+    price: number;
+    quantity: number;
+  };
+  initialStage?: TradeTicketStage;
+  validityMode?: "auto" | "today" | "nextDay";
+  confirmTitleOverride?: string;
 };
 
 type SearchResult = {
@@ -250,38 +265,40 @@ function SearchPanel({
         </div>
 
         <div className="mt-2 overflow-hidden rounded-[18px] border border-[#f2e0cd] bg-white">
-          {visibleResults.length > 0 ? (
-            visibleResults.map((item, index) => (
-              <button
-                key={`${item.symbol}-${item.name}`}
-                type="button"
-                onClick={() => onPick(item.symbol)}
-                className={`grid w-full grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 text-left ${
-                  index !== 0 ? "border-t border-[#f6ede3]" : ""
-                } active:bg-[#fff7ee]`}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-body font-black text-[#2f2b26]">{item.symbol}</p>
-                    {item.badge ? (
-                      <span className="text-label rounded-full bg-[#fff1de] px-2 py-0.5 font-bold text-[var(--app-orange-dark)]">
-                        {item.badge}
-                      </span>
-                    ) : null}
+          <div className="max-h-[50vh] overflow-y-auto">
+            {visibleResults.length > 0 ? (
+              visibleResults.map((item, index) => (
+                <button
+                  key={`${item.symbol}-${item.name}`}
+                  type="button"
+                  onClick={() => onPick(item.symbol)}
+                  className={`grid w-full grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 text-left ${
+                    index !== 0 ? "border-t border-[#f6ede3]" : ""
+                  } active:bg-[#fff7ee]`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-body font-black text-[#2f2b26]">{item.symbol}</p>
+                      {item.badge ? (
+                        <span className="text-label rounded-full bg-[#fff1de] px-2 py-0.5 font-bold text-[var(--app-orange-dark)]">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-helper mt-1 truncate text-[#8f7f6f]">
+                      {item.name}
+                    </p>
                   </div>
-                  <p className="text-helper mt-1 truncate text-[#8f7f6f]">
-                    {item.name}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-[#c8aa85]" />
-              </button>
-            ))
-          ) : (
-            <div className="px-4 py-8 text-center">
-              <p className="text-body font-black text-[#6b5a48]">{copy.noResult}</p>
-              <p className="text-helper mt-2 text-[#b39981]">{copy.noResultHint}</p>
-            </div>
-          )}
+                  <ChevronRight className="h-4 w-4 text-[#c8aa85]" />
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-8 text-center">
+                <p className="text-body font-black text-[#6b5a48]">{copy.noResult}</p>
+                <p className="text-helper mt-2 text-[#b39981]">{copy.noResultHint}</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -296,6 +313,10 @@ export default function TradeTicketCard({
   startWithSearch = false,
   orderId,
   orderStatus,
+  orderDetail,
+  initialStage,
+  validityMode = "auto",
+  confirmTitleOverride,
 }: TradeTicketCardProps) {
   const router = useRouter();
   const { language } = useLanguage();
@@ -309,6 +330,9 @@ export default function TradeTicketCard({
       chooseTradableStock: "請選擇可交易港股",
       minPrice: (isBuy: boolean, min: number) => `${isBuy ? "買入" : "賣出"}價不得低於 HK$${min.toFixed(2)}`,
       lotSizeError: (size: number) => `交易股數必須為每手 ${size} 股的整數倍`,
+      priceRangeError: (min: string, max: string) => `價格需在 ${min} - ${max} 範圍內`,
+      insufficientSellQuantity: (max: number) => `可賣出數量不足，最大可賣 ${max} 股`,
+      maxQuantityLabel: (max: number) => `最大 ${max} 股`,
       validityToday: "交易指示有效至本日收市",
       validityNextDay: "交易指示將於下一交易日執行",
       invalidTradeData: "請輸入有效的交易資料",
@@ -356,6 +380,7 @@ export default function TradeTicketCard({
       cancel: "取消",
       confirm: "確定",
       submitSuccess: "提交成功",
+      submitFailed: "提交失敗",
       viewTradeStatus: "查看交易狀況",
       tradeAgain: "再次交易",
       backHome: "返回主頁",
@@ -378,6 +403,9 @@ export default function TradeTicketCard({
       chooseTradableStock: "请选择可交易港股",
       minPrice: (isBuy: boolean, min: number) => `${isBuy ? "买入" : "卖出"}价不得低于 HK$${min.toFixed(2)}`,
       lotSizeError: (size: number) => `交易股数必须为每手 ${size} 股的整数倍`,
+      priceRangeError: (min: string, max: string) => `价格需在 ${min} - ${max} 范围内`,
+      insufficientSellQuantity: (max: number) => `可卖出数量不足，最大可卖 ${max} 股`,
+      maxQuantityLabel: (max: number) => `最大 ${max} 股`,
       validityToday: "交易指示有效至本日收市",
       validityNextDay: "交易指示将于下一交易日执行",
       invalidTradeData: "请输入有效的交易资料",
@@ -425,6 +453,7 @@ export default function TradeTicketCard({
       cancel: "取消",
       confirm: "确定",
       submitSuccess: "提交成功",
+      submitFailed: "提交失败",
       viewTradeStatus: "查看交易状况",
       tradeAgain: "再次交易",
       backHome: "返回主页",
@@ -447,6 +476,9 @@ export default function TradeTicketCard({
       chooseTradableStock: "Please choose a tradable HK stock",
       minPrice: (isBuy: boolean, min: number) => `${isBuy ? "Buy" : "Sell"} price must be >= HK$${min.toFixed(2)}`,
       lotSizeError: (size: number) => `Quantity must be a multiple of lot size ${size}`,
+      priceRangeError: (min: string, max: string) => `Price must be within ${min} - ${max}`,
+      insufficientSellQuantity: (max: number) => `Insufficient holdings. Max sellable: ${max} shares`,
+      maxQuantityLabel: (max: number) => `Max ${max} shares`,
       validityToday: "Instruction valid until market close today",
       validityNextDay: "Instruction will execute on next trading day",
       invalidTradeData: "Please enter valid trade data",
@@ -508,16 +540,26 @@ export default function TradeTicketCard({
       noResultHint: "Try stock code, name, or ticker keywords",
     },
   });
+  const orderPreset = resolveTradeTicketOrderPreset(orderDetail);
+  const presetSide = orderPreset?.side;
+  const presetPrice = orderPreset?.price;
+  const presetQuantity = orderPreset?.quantity;
   const [activeProduct, setActiveProduct] = useState<TradeProduct | undefined>(product);
-  const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [price, setPrice] = useState(parseNumericValue(product?.defaultPrice ?? product?.price));
-  const [quantity, setQuantity] = useState(parseNumericValue(product?.defaultQuantity ?? "10"));
+  const [side, setSide] = useState<"buy" | "sell">(presetSide ?? "buy");
+  const [price, setPrice] = useState(
+    presetPrice ?? parseNumericValue(product?.defaultPrice ?? product?.price)
+  );
+  const [quantity, setQuantity] = useState(
+    presetQuantity ?? parseNumericValue(product?.defaultQuantity ?? "10")
+  );
   const [query, setQuery] = useState("");
   const [showSearch, setShowSearch] = useState(startWithSearch);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [showDetails, setShowDetails] = useState(variant === "order");
+  const initialState = resolveTradeTicketInitialState(variant, initialStage);
+  const [showConfirm, setShowConfirm] = useState(initialState.showConfirm);
+  const [showSuccess, setShowSuccess] = useState(initialState.showSuccess);
+  const [showDetails, setShowDetails] = useState(initialState.showDetails);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [submitPending, setSubmitPending] = useState(false);
@@ -530,17 +572,19 @@ export default function TradeTicketCard({
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
 
   useEffect(() => {
+    const nextInitialState = resolveTradeTicketInitialState(variant, initialStage);
     queueMicrotask(() => {
       setActiveProduct(product);
-      setSide("buy");
-      setPrice(parseNumericValue(product?.defaultPrice ?? product?.price));
-      setQuantity(parseNumericValue(product?.defaultQuantity ?? "10") || 10);
+      setSide(presetSide ?? "buy");
+      setPrice(presetPrice ?? parseNumericValue(product?.defaultPrice ?? product?.price));
+      setQuantity(presetQuantity ?? (parseNumericValue(product?.defaultQuantity ?? "10") || 10));
       setQuery("");
       setShowSearch(startWithSearch);
-      setShowConfirm(false);
-      setShowSuccess(false);
-      setShowDetails(variant === "order");
+      setShowConfirm(nextInitialState.showConfirm);
+      setShowSuccess(nextInitialState.showSuccess);
+      setShowDetails(nextInitialState.showDetails);
       setShowCancelConfirm(false);
+      setShowErrorDialog(false);
       setSubmitError(null);
       setCancelError(null);
       setSubmitPending(false);
@@ -548,7 +592,7 @@ export default function TradeTicketCard({
       setCurrentOrderStatus(orderStatus);
       setLastOrderId(null);
     });
-  }, [product, startWithSearch, variant, orderStatus]);
+  }, [product, startWithSearch, variant, orderStatus, initialStage, presetSide, presetPrice, presetQuantity]);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -567,8 +611,11 @@ export default function TradeTicketCard({
       const nextProduct = await getTradeProductViewModel(targetSymbol);
       if (!cancelled) {
         setActiveProduct(nextProduct);
-        setPrice(parseNumericValue(nextProduct.defaultPrice ?? nextProduct.price));
-        setQuantity(parseNumericValue(nextProduct.defaultQuantity ?? nextProduct.lotSize ?? "100"));
+        setPrice(presetPrice ?? parseNumericValue(nextProduct.defaultPrice ?? nextProduct.price));
+        setQuantity(
+          presetQuantity ??
+            parseNumericValue(nextProduct.defaultQuantity ?? nextProduct.lotSize ?? "100")
+        );
         setProductLoading(false);
       }
     }
@@ -576,7 +623,7 @@ export default function TradeTicketCard({
     return () => {
       cancelled = true;
     };
-  }, [product, symbol]);
+  }, [product, symbol, presetPrice, presetQuantity]);
 
   const currentProduct = activeProduct;
   const currencyUnit = copy.currencyUnit;
@@ -600,34 +647,78 @@ export default function TradeTicketCard({
   const changePct = currentProduct?.change?.match(/\(([^)]+)\)/)?.[1] ?? "0.075%";
   const orderSide: TradeSide = side === "buy" ? "BUY" : "SELL";
   const orderType: TradeOrderType = "LIMIT";
+
+  // 计算价格范围（±20 ticks）
+  const currentMarketPrice = quoteValue || displayPrice;
+  const tickSize = currentMarketPrice >= 100 ? 0.05 : currentMarketPrice >= 10 ? 0.01 : 0.005;
+  const limitPriceMin = Math.max(0.01, currentMarketPrice - tickSize * 20);
+  const limitPriceMax = currentMarketPrice + tickSize * 20;
+
+  // 计算最大可买/可卖数量
+  const maxBuyQuantity = Math.floor(availableCashRaw / (displayPrice * (1 + 0.00075)) / lotSize) * lotSize;
+  const maxSellQuantity = currentProduct?.holdingValue
+    ? Math.floor(parseNumericValue(currentProduct.holdingValue) / lotSize) * lotSize
+    : 0;
+  const maxQuantity = side === "buy" ? maxBuyQuantity : maxSellQuantity;
+
   const minPrice = side === "buy" ? 0.05 : 0.01;
+  const orderMutationError =
+    variant === "order" && !orderId ? copy.orderIdMissingForAmend : null;
+
+  // 增强的校验逻辑
+  const priceRangeError = displayPrice < limitPriceMin || displayPrice > limitPriceMax
+    ? copy.priceRangeError(formatNumber(limitPriceMin), formatNumber(limitPriceMax))
+    : null;
+
   const validationError = !currentProduct
     ? copy.chooseTradableStock
     : displayPrice < minPrice
       ? copy.minPrice(side === "buy", minPrice)
-      : displayQuantity % lotSize !== 0
-        ? copy.lotSizeError(lotSize)
-        : null;
+      : priceRangeError
+        ? priceRangeError
+        : displayQuantity % lotSize !== 0
+          ? copy.lotSizeError(lotSize)
+          : side === "sell" && displayQuantity > maxSellQuantity
+            ? copy.insufficientSellQuantity(maxSellQuantity)
+            : null;
+
+  const blockingError = orderMutationError ?? validationError;
   const canSubmit =
     !!currentProduct &&
     displayPrice > 0 &&
     displayQuantity > 0 &&
-    !validationError &&
+    !blockingError &&
     !submitPending;
-  const validityText = isTradingHours
-    ? copy.validityToday
-    : copy.validityNextDay;
+  const validityText =
+    validityMode === "today"
+      ? copy.validityToday
+      : validityMode === "nextDay"
+        ? copy.validityNextDay
+        : isTradingHours
+          ? copy.validityToday
+          : copy.validityNextDay;
   const isDetailOnly = variant === "order" && showDetails;
-  const canCancelOrder =
-    !!orderId &&
-    (currentOrderStatus === "PENDING" || currentOrderStatus === "PARTIAL_FILLED");
+  const { allowAmendOrder, allowCancelOrder, showReadOnlyClose } =
+    resolveOrderDetailActionState(currentOrderStatus, orderId);
 
   const adjustPrice = (delta: number) => {
-    setPrice((current) => Math.max(0.001, Number(((current || 0) + delta).toFixed(3))));
+    setPrice((current) => {
+      const newValue = Number(((current || 0) + delta).toFixed(3));
+      // 确保在有效范围内
+      const clampedValue = Math.max(minPrice, Math.min(limitPriceMax, newValue));
+      return Math.max(0.001, clampedValue);
+    });
   };
 
   const adjustQuantity = (delta: number) => {
-    setQuantity((current) => Math.max(lotSize, (current || lotSize) + delta * lotSize));
+    setQuantity((current) => {
+      const newValue = (current || lotSize) + delta * lotSize;
+      // 确保是手数倍数
+      const adjustedValue = Math.round(newValue / lotSize) * lotSize;
+      // 确保不超过最大值
+      const clampedValue = maxQuantity > 0 ? Math.min(maxQuantity, adjustedValue) : adjustedValue;
+      return Math.max(lotSize, clampedValue);
+    });
   };
 
   const openSearch = () => {
@@ -649,7 +740,8 @@ export default function TradeTicketCard({
 
   const handleSubmit = () => {
     if (!canSubmit) {
-      setSubmitError(validationError ?? copy.invalidTradeData);
+      setSubmitError(blockingError ?? copy.invalidTradeData);
+      setShowErrorDialog(true);
       return;
     }
 
@@ -661,6 +753,7 @@ export default function TradeTicketCard({
     if (!currentProduct || validationError) {
       setShowConfirm(false);
       setSubmitError(validationError ?? copy.chooseTradableStock);
+      setShowErrorDialog(true);
       return;
     }
 
@@ -672,6 +765,7 @@ export default function TradeTicketCard({
         setSubmitPending(false);
         setShowConfirm(false);
         setSubmitError(copy.orderIdMissingForAmend);
+        setShowErrorDialog(true);
         return;
       }
       const amendResult = await tradingApiClient.amendOrder(orderId, displayPrice, displayQuantity);
@@ -679,6 +773,7 @@ export default function TradeTicketCard({
       if (!amendResult.ok) {
         setShowConfirm(false);
         setSubmitError(amendResult.message);
+        setShowErrorDialog(true);
         return;
       }
       setCurrentOrderStatus("CANCELED");
@@ -712,6 +807,7 @@ export default function TradeTicketCard({
     if (!result.ok) {
       setShowConfirm(false);
       setSubmitError(result.message);
+      setShowErrorDialog(true);
       return;
     }
 
@@ -897,7 +993,7 @@ export default function TradeTicketCard({
                   onClick={() => {
                     onClose?.();
                     startTransition(() => {
-                      router.push("/quotes");
+                      router.push(`/quotes/${currentProduct.symbol}`);
                     });
                   }}
                   className="text-helper mt-2 inline-flex items-center gap-1 font-semibold text-[var(--app-orange-dark)]"
@@ -940,17 +1036,59 @@ export default function TradeTicketCard({
                 <span className="text-helper text-[#907a63]">{copy.quote}({currencyUnit})</span>
                 <button
                   type="button"
-                  onClick={() => adjustPrice(-0.1)}
+                  onClick={() => adjustPrice(-tickSize)}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--app-orange)] text-white"
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="text-title text-center font-bold text-[#23262b]">
-                  {formatNumber(displayPrice)}
-                </span>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={displayPrice}
+                    onChange={(e) => {
+                      let value = parseFloat(e.target.value);
+                      if (Number.isNaN(value) || value <= 0) return;
+
+                      // 限制3位小数
+                      value = Math.round(value * 1000) / 1000;
+                      setPrice(value);
+                    }}
+                    onBlur={() => {
+                      // 失焦时校验并调整到有效范围
+                      let adjustedPrice = Math.round(price * 1000) / 1000;
+
+                      // 确保在价格范围内
+                      if (adjustedPrice < limitPriceMin) {
+                        adjustedPrice = limitPriceMin;
+                      } else if (adjustedPrice > limitPriceMax) {
+                        adjustedPrice = limitPriceMax;
+                      }
+
+                      // 确保不低于最低价
+                      if (adjustedPrice < minPrice) {
+                        adjustedPrice = minPrice;
+                      }
+
+                      setPrice(adjustedPrice);
+                    }}
+                    className={`text-title w-full text-center font-bold outline-none ${
+                      priceRangeError ? 'text-[#ef4444]' : 'text-[#23262b]'
+                    }`}
+                    step={tickSize}
+                    min={minPrice}
+                    max={limitPriceMax}
+                  />
+                  {priceRangeError && (
+                    <div className="absolute -bottom-6 left-0 right-0 text-center">
+                      <span className="text-label text-[#ef4444]">
+                        {formatNumber(limitPriceMin)} - {formatNumber(limitPriceMax)}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <button
                   type="button"
-                  onClick={() => adjustPrice(0.1)}
+                  onClick={() => adjustPrice(tickSize)}
                   className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--app-orange)] text-white"
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -958,7 +1096,7 @@ export default function TradeTicketCard({
                 <span className="text-label text-right text-[#bc9871]">{copy.minTick}</span>
               </div>
 
-              <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 py-3">
+              <div className={`grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2 py-3 ${priceRangeError ? 'mt-6' : ''}`}>
                 <span className="text-helper text-[#907a63]">{copy.quantity}</span>
                 <button
                   type="button"
@@ -967,9 +1105,53 @@ export default function TradeTicketCard({
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="text-title text-center font-bold text-[#23262b]">
-                  {displayQuantity}
-                </span>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={displayQuantity}
+                    onChange={(e) => {
+                      let value = parseInt(e.target.value, 10);
+                      if (Number.isNaN(value) || value <= 0) return;
+
+                      // 自动调整到手数倍数（向下取整）
+                      const remainder = value % lotSize;
+                      if (remainder !== 0) {
+                        value = Math.floor(value / lotSize) * lotSize;
+                      }
+
+                      setQuantity(value);
+                    }}
+                    onBlur={() => {
+                      // 失焦时确保是手数倍数
+                      let adjusted = Math.round(quantity / lotSize) * lotSize;
+                      adjusted = Math.max(lotSize, adjusted);
+
+                      // 检查是否超过最大可买/可卖数量
+                      if (adjusted > maxQuantity && maxQuantity > 0) {
+                        adjusted = maxQuantity;
+                      }
+
+                      setQuantity(adjusted);
+                    }}
+                    className={`text-title w-full text-center font-bold outline-none ${
+                      displayQuantity % lotSize !== 0 ? 'text-[#ef4444]' : 'text-[#23262b]'
+                    }`}
+                    step={lotSize}
+                    min={lotSize}
+                    max={maxQuantity > 0 ? maxQuantity : undefined}
+                  />
+                  {maxQuantity > 0 && (
+                    <div className="absolute -bottom-5 left-0 right-0 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(maxQuantity)}
+                        className="text-label text-[var(--app-orange-dark)] hover:underline"
+                      >
+                        {copy.maxQuantityLabel(maxQuantity)}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => adjustQuantity(1)}
@@ -1008,9 +1190,9 @@ export default function TradeTicketCard({
               <p className="text-helper mt-2 rounded-[14px] bg-[#fff2ef] px-3 py-2 font-semibold text-[#d0524a]">
                 {submitError}
               </p>
-            ) : validationError ? (
+            ) : blockingError ? (
               <p className="text-helper mt-2 rounded-[14px] bg-[#fff8ef] px-3 py-2 font-semibold text-[#b07633]">
-                {validationError}
+                {blockingError}
               </p>
             ) : null}
             <p className="text-label pt-1.5 text-center text-[#b5a08a]">{copy.tradeNote}</p>
@@ -1054,32 +1236,60 @@ export default function TradeTicketCard({
             <SummaryRow label={copy.estimatedTotalSimple} value={totalText} />
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setShowDetails(false)}
-            className="text-body flex h-11 items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
-          >
-              {copy.amendOrder}
-            </button>
-            <button
-              type="button"
-              disabled={!canCancelOrder}
-              onClick={() => {
-                if (!canCancelOrder) {
-                  return;
-                }
-                setShowCancelConfirm(true);
-              }}
-              className={`text-body flex h-11 items-center justify-center rounded-full font-black text-white ${
-                canCancelOrder
-                  ? "bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)]"
-                  : "bg-[#d8d0c7]"
-              }`}
-            >
-              {copy.cancelOrder}
-            </button>
-          </div>
+          {showReadOnlyClose ? (
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onClose) {
+                    onClose();
+                    return;
+                  }
+                  setShowDetails(false);
+                }}
+                className="text-body flex h-11 w-full items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
+              >
+                {copy.back}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                disabled={!allowAmendOrder}
+                onClick={() => {
+                  if (!allowAmendOrder) {
+                    return;
+                  }
+                  setShowDetails(false);
+                }}
+                className={`text-body flex h-11 items-center justify-center rounded-full border font-black ${
+                  allowAmendOrder
+                    ? "border-[#ffbe78] bg-white text-[var(--app-orange-dark)]"
+                    : "border-[#e7ddd2] bg-[#f7f2ec] text-[#b9ab9c]"
+                }`}
+              >
+                {copy.amendOrder}
+              </button>
+              <button
+                type="button"
+                disabled={!allowCancelOrder}
+                onClick={() => {
+                  if (!allowCancelOrder) {
+                    return;
+                  }
+                  setShowCancelConfirm(true);
+                }}
+                className={`text-body flex h-11 items-center justify-center rounded-full font-black text-white ${
+                  allowCancelOrder
+                    ? "bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)]"
+                    : "bg-[#d8d0c7]"
+                }`}
+              >
+                {copy.cancelOrder}
+              </button>
+            </div>
+          )}
           {cancelError ? (
             <p className="text-helper mt-3 rounded-[12px] bg-[#fff2ef] px-3 py-2 text-[#d0524a]">
               {cancelError}
@@ -1116,7 +1326,9 @@ export default function TradeTicketCard({
 
       {showConfirm ? (
         <DialogCard>
-          <h3 className="text-page text-center font-black text-[#27231f]">{copy.confirmInstruction}</h3>
+          <h3 className="text-page text-center font-black text-[#27231f]">
+            {confirmTitleOverride ?? copy.confirmInstruction}
+          </h3>
           <div className="mt-5 space-y-3">
             <SummaryRow label={copy.sideLabel} value={side === "buy" ? copy.buy : copy.sell} />
             <SummaryRow label={copy.symbolLabel} value={currentProduct.symbol} />
@@ -1189,7 +1401,7 @@ export default function TradeTicketCard({
                 setShowSuccess(false);
                 onClose?.();
                 startTransition(() => {
-                  router.push("/quotes");
+                  router.push(`/quotes/${currentProduct.symbol}`);
                 });
               }}
               className="text-body flex h-11 w-full items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
@@ -1202,6 +1414,36 @@ export default function TradeTicketCard({
               className="text-body flex h-11 w-full items-center justify-center rounded-full border border-[#ffbe78] bg-white font-black text-[var(--app-orange-dark)]"
             >
               {copy.backHome}
+            </button>
+          </div>
+        </DialogCard>
+      ) : null}
+
+      {showErrorDialog ? (
+        <DialogCard>
+          <div className="flex justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fff2ef] text-[#d0524a]">
+              <X className="h-6 w-6" />
+            </div>
+          </div>
+          <h3 className="mt-4 text-center text-[18px] font-black text-[#27231f]">
+            {copy.submitFailed}
+          </h3>
+          <div className="mt-4 rounded-[14px] bg-[#fff8f6] px-4 py-3">
+            <p className="text-body text-center font-semibold leading-relaxed text-[#c04127]">
+              {submitError}
+            </p>
+          </div>
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => {
+                setShowErrorDialog(false);
+                setSubmitError(null);
+              }}
+              className="text-body flex h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] font-black text-white"
+            >
+              {copy.confirm}
             </button>
           </div>
         </DialogCard>
