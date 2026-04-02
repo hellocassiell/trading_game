@@ -36,5 +36,6 @@ dist/
 unpackage/
 .DS_Store
 .worktrees/
+.superpowers/
 .playwright-cli/
 docs/superpowers/

@@ -90,6 +90,8 @@
 
 - 目录：`frontend/`
 - 技术栈：Next.js App Router、TypeScript、Tailwind CSS 4、React 19
+- 当前补充：前端 ESLint 已切换为通用 `eslint + typescript-eslint` 扁平配置，不再依赖 `eslint-config-next`，以兼容私有 npm 仓库缺少该包的场景
+- 当前补充：`frontend/.npmrc` 已显式设置 `include=optional`，并在 `frontend/package.json` 声明跨平台可选原生依赖（Tailwind Oxide / Lightning CSS 的 darwin 与 win32 包）以提升 Mac/Windows 安装稳定性
 - 当前状态：以前端高保真原型为主，页面数据已优先通过 `frontend/lib/adapters/` + `frontend/lib/api/` 调后端 `/api/v1` 接口
 - 当前多语：已支持 `zh-Hant` / `zh-Hans` / `en`，默认 `zh-Hant`；语言切换入口位于 `/more`，接口请求统一透传 `X-Lang` + `lang`
 - 当前补充：已建立初步前端数据收口层，读取与提交逻辑优先放在 `frontend/lib/adapters/` 与 `frontend/lib/api/`，页面层不要再直接散写接口请求
