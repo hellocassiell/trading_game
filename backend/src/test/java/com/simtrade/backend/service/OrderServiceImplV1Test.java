@@ -266,6 +266,48 @@ class OrderServiceImplV1Test {
     }
 
     @Test
+    void listActiveOrders_allShouldIncludeFilled() {
+        Order pending = new Order();
+        pending.setId("ord_pending");
+        pending.setUserId("u_10001");
+        pending.setStatus(0);
+        pending.setCreateTime(LocalDateTime.of(2026, 3, 27, 9, 35));
+
+        Order partial = new Order();
+        partial.setId("ord_partial");
+        partial.setUserId("u_10001");
+        partial.setStatus(1);
+        partial.setCreateTime(LocalDateTime.of(2026, 3, 27, 9, 36));
+
+        Order filled = new Order();
+        filled.setId("ord_filled");
+        filled.setUserId("u_10001");
+        filled.setStatus(2);
+        filled.setCreateTime(LocalDateTime.of(2026, 3, 27, 9, 37));
+
+        Order canceled = new Order();
+        canceled.setId("ord_canceled");
+        canceled.setUserId("u_10001");
+        canceled.setStatus(3);
+        canceled.setCreateTime(LocalDateTime.of(2026, 3, 27, 9, 38));
+
+        persistedOrders.put(pending.getId(), pending);
+        persistedOrders.put(partial.getId(), partial);
+        persistedOrders.put(filled.getId(), filled);
+        persistedOrders.put(canceled.getId(), canceled);
+
+        List<Order> result = orderService.listActiveOrders("u_10001", "ALL");
+        List<Integer> statuses = result.stream()
+                .map(Order::getStatus)
+                .collect(java.util.stream.Collectors.toList());
+
+        Assertions.assertTrue(statuses.contains(0));
+        Assertions.assertTrue(statuses.contains(1));
+        Assertions.assertTrue(statuses.contains(2));
+        Assertions.assertFalse(statuses.contains(3));
+    }
+
+    @Test
     void amendOrderV1_shouldCancelOriginalAndCreateNewOrder() {
         Mockito.when(mockDataService.getLotSize("00700")).thenReturn(100);
         Mockito.when(mockDataService.getCurrentPrice("00700")).thenReturn(new BigDecimal("300.00"));
