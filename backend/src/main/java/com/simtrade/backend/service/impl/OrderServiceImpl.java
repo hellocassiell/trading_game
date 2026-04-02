@@ -222,6 +222,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                     .collect(Collectors.toList());
         }
 
+        if ("ALL".equalsIgnoreCase(status)) {
+            return orders.stream()
+                    .filter(order -> safeInt(order.getStatus()) == STATUS_PENDING
+                            || safeInt(order.getStatus()) == STATUS_PARTIAL_FILLED
+                            || safeInt(order.getStatus()) == STATUS_FILLED)
+                    .collect(Collectors.toList());
+        }
+
         return orders.stream()
                 .filter(order -> safeInt(order.getStatus()) == STATUS_PENDING
                         || safeInt(order.getStatus()) == STATUS_PARTIAL_FILLED)
