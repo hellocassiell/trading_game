@@ -297,13 +297,12 @@ class OrderServiceImplV1Test {
         persistedOrders.put(canceled.getId(), canceled);
 
         List<Order> result = orderService.listActiveOrders("u_10001", "ALL");
-        List<Integer> statuses = result.stream()
+        java.util.Set<Integer> statuses = result.stream()
                 .map(Order::getStatus)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(java.util.stream.Collectors.toSet());
 
-        Assertions.assertTrue(statuses.contains(0));
-        Assertions.assertTrue(statuses.contains(1));
-        Assertions.assertTrue(statuses.contains(2));
+        Assertions.assertEquals(java.util.Set.of(0, 1, 2), statuses);
+        Assertions.assertEquals(3, statuses.size());
         Assertions.assertFalse(statuses.contains(3));
     }
 
