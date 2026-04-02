@@ -40,9 +40,24 @@ export default function GuestPage() {
   const blockedViewModel = getBlockedViewModel(language);
   const guestInfoModals = getGuestInfoModalViewModels(language);
   const copy = byLanguage(language, {
-    "zh-Hant": { continueGame: "繼續比賽", identified: "已識別參賽者", close: "關閉" },
-    "zh-Hans": { continueGame: "继续比赛", identified: "已识别参赛者", close: "关闭" },
-    en: { continueGame: "Continue", identified: "Recognized player", close: "Close" },
+    "zh-Hant": {
+      continueGame: "繼續比賽",
+      identified: "已識別參賽者",
+      close: "關閉",
+      eventLabel: "港股模擬交易活動",
+    },
+    "zh-Hans": {
+      continueGame: "继续比赛",
+      identified: "已识别参赛者",
+      close: "关闭",
+      eventLabel: "港股模拟交易活动",
+    },
+    en: {
+      continueGame: "Continue",
+      identified: "Recognized player",
+      close: "Close",
+      eventLabel: "HK Stock Trading Event",
+    },
   });
   const session = isClient ? readAuthSession() : null;
   const modal = isClient ? searchParams.get("modal") : null;
@@ -61,52 +76,156 @@ export default function GuestPage() {
 
   return (
     <AppScreen className="!px-0 !pb-0">
-      <div className="relative min-h-[100dvh] overflow-hidden bg-[#f3f3f3]">
-        <div className="absolute inset-x-0 top-0 h-[270px] bg-[linear-gradient(180deg,#f7fbff_0%,#dff2ff_55%,#f3f3f3_100%)]" />
-        <div className="absolute left-[-18px] top-[116px] h-[168px] w-[460px] rotate-[10deg] rounded-[48%] bg-[linear-gradient(90deg,rgba(255,156,47,0.26),rgba(255,196,132,0.08))]" />
-        <div className="absolute left-4 top-[88px] h-5 w-5 rounded-full bg-[#ff9d3f]" />
-        <div className="absolute left-[72px] top-[148px] h-3 w-3 rounded-full bg-[#ffbc71]" />
-        <div className="absolute right-8 top-[78px] h-7 w-7 rounded-[10px] border border-[#f6cda2] bg-white/70" />
+      <div className="relative min-h-[100dvh] overflow-hidden bg-[linear-gradient(180deg,#fff9f2_0%,#fff0dd_48%,#ffe8c8_100%)]">
+        <div className="pointer-events-none absolute left-[-140px] top-[-84px] h-[320px] w-[320px] rounded-full bg-[radial-gradient(circle,rgba(255,174,66,0.36)_0%,rgba(255,174,66,0)_72%)]" />
+        <div className="pointer-events-none absolute right-[-120px] top-[82px] h-[270px] w-[270px] rounded-full bg-[radial-gradient(circle,rgba(255,145,34,0.24)_0%,rgba(255,145,34,0)_72%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-[130px] h-[240px] bg-[linear-gradient(180deg,rgba(255,190,119,0.22)_0%,rgba(255,190,119,0)_100%)]" />
+        <div className="pointer-events-none absolute left-[30px] top-[108px] h-4 w-4 rounded-full bg-[#ffb25a]/70" />
+        <div className="pointer-events-none absolute right-[46px] top-[152px] h-2.5 w-2.5 rounded-full bg-[#ffcb8d]/80" />
 
-        <div className="relative flex min-h-[100dvh] flex-col px-5 pb-[max(env(safe-area-inset-bottom),20px)] pt-[max(env(safe-area-inset-top),26px)]">
-          <div className="mx-auto mt-2 h-[206px] w-[240px] rounded-[26px] border border-[#f0ddca] bg-[linear-gradient(180deg,#fffdf8_0%,#f6f4ef_100%)] shadow-[0_20px_34px_rgba(147,104,46,0.08)]">
-            <div className="relative h-full w-full overflow-hidden rounded-[26px]">
-              <div className="absolute left-[-8px] top-[14px] h-[120px] w-[120px] rounded-full bg-[#ffd9a8]/70" />
-              <div className="absolute right-[-30px] top-[20px] h-[136px] w-[136px] rounded-full bg-[#ffe9ce]/85" />
-              <div className="absolute left-[24px] top-[40px] h-[100px] w-[82px] rounded-[16px] bg-[linear-gradient(180deg,#ffc87c_0%,#ff9d3f_100%)]" />
-              <div className="absolute left-[94px] top-[62px] h-[76px] w-[120px] rounded-[18px] border border-[#f3dac2] bg-white" />
-              <div className="absolute left-[110px] top-[46px] h-[32px] w-[32px] rounded-full bg-[#ffb059] text-center text-[18px] leading-[32px]">
-                🏆
+        <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[430px] flex-col px-5 pb-[max(env(safe-area-inset-bottom),20px)] pt-[max(env(safe-area-inset-top),24px)]">
+          <div className="relative mx-auto mt-1 w-full max-w-[304px] rounded-[34px_34px_44px_26px] bg-[linear-gradient(180deg,#fffdf8_0%,#fff4e8_100%)] p-3 shadow-[0_22px_44px_rgba(152,91,20,0.12)]">
+            <div className="pointer-events-none absolute -left-5 top-5 h-20 w-20 rounded-full bg-[#ffd79f]/55 blur-[1px]" />
+            <div className="pointer-events-none absolute -right-4 bottom-5 h-14 w-14 rounded-[38%] bg-[#ffd29a]/50" />
+
+            <div className="relative h-[184px] overflow-hidden rounded-[26px_30px_34px_24px] bg-[linear-gradient(140deg,#ffe2bb_0%,#ffb760_46%,#f08a09_100%)]">
+              <div className="absolute -right-16 -top-14 h-44 w-44 rounded-[42%] border border-white/30 bg-white/25" />
+              <div className="absolute -left-16 top-12 h-40 w-40 rounded-full bg-white/20" />
+              <div className="absolute left-[86px] top-[122px] h-[2px] w-[132px] rotate-[-13deg] border-t-2 border-dashed border-white/65" />
+              <svg
+                className="pointer-events-none absolute inset-0 h-full w-full opacity-95"
+                viewBox="0 0 304 184"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <defs>
+                  <linearGradient id="guest-road" x1="18" y1="162" x2="286" y2="120" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#FFEFD2" />
+                    <stop offset="1" stopColor="#FFD69B" />
+                  </linearGradient>
+                  <linearGradient id="guest-phone" x1="221" y1="38" x2="281" y2="126" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#FFFDF5" />
+                    <stop offset="1" stopColor="#FFE4BA" />
+                  </linearGradient>
+                </defs>
+
+                <path
+                  d="M18 160C49 141 69 132 99 135C127 137 139 122 161 114C182 106 193 118 212 114C239 109 255 91 288 79"
+                  stroke="rgba(255,255,255,0.72)"
+                  strokeWidth="2.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray="4 6"
+                />
+                <path
+                  d="M14 170C58 151 87 140 121 145C156 150 174 139 205 134C237 129 262 136 292 123"
+                  stroke="url(#guest-road)"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M24 166C38 156 47 155 63 157"
+                  stroke="#F5A338"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                />
+
+                <g transform="translate(221 33) rotate(12)">
+                  <rect x="2" y="4" width="56" height="96" rx="14" fill="rgba(120,66,12,0.22)" />
+                  <rect width="56" height="96" rx="14" fill="url(#guest-phone)" />
+                  <rect x="7" y="11" width="42" height="62" rx="10" fill="rgba(255,177,81,0.5)" />
+                  <rect x="22" y="79" width="12" height="4" rx="2" fill="#F4B063" />
+                  <path
+                    d="M34 27C40 22 47 28 44 34C41 38 37 41 34 47C30 41 26 38 25 33C23 27 29 22 34 27Z"
+                    fill="#FFEFD6"
+                  />
+                </g>
+
+                <g transform="translate(52 56)">
+                  <path d="M14 2C20 2 24 6 24 12V18C24 28 17 34 8 34C-2 34 -8 28 -8 18V12C-8 6 -4 2 2 2H14Z" fill="#FFD451" />
+                  <rect x="-1" y="34" width="18" height="8" rx="4" fill="#FFE29D" />
+                  <rect x="-7" y="42" width="30" height="6" rx="3" fill="#E48214" />
+                  <circle cx="-16" cy="10" r="7" fill="#FFEFCF" />
+                  <circle cx="32" cy="12" r="7" fill="#FFEFCF" />
+                </g>
+
+                <g transform="translate(20 120)">
+                  <circle cx="10" cy="8" r="6" fill="#FFE6C0" />
+                  <rect x="6" y="14" width="8" height="16" rx="4" fill="#2A5EB0" />
+                  <rect x="4" y="28" width="4" height="10" rx="2" fill="#1E4A8C" />
+                  <rect x="12" y="28" width="4" height="10" rx="2" fill="#1E4A8C" />
+                  <path d="M14 16L24 12L25 16L16 20Z" fill="#FF6961" />
+                  <circle cx="26" cy="14" r="3" fill="#FFD772" />
+                </g>
+
+                <g transform="translate(252 120)">
+                  <circle cx="8" cy="8" r="6" fill="#FFE6C0" />
+                  <rect x="4" y="14" width="8" height="16" rx="4" fill="#2EA2A0" />
+                  <rect x="2" y="28" width="4" height="10" rx="2" fill="#1E7A79" />
+                  <rect x="10" y="28" width="4" height="10" rx="2" fill="#1E7A79" />
+                  <rect x="14" y="18" width="14" height="10" rx="5" fill="#FFF3D6" />
+                  <circle cx="21" cy="23" r="2" fill="#F38B11" />
+                </g>
+
+                <g transform="translate(170 136)">
+                  <circle cx="12" cy="12" r="12" fill="#FFEED3" />
+                  <circle cx="12" cy="12" r="7.5" fill="none" stroke="#F4931D" strokeWidth="3" />
+                  <circle cx="12" cy="12" r="2.8" fill="#F4931D" />
+                </g>
+
+                <path
+                  d="M128 164L138 159L136 170L147 165"
+                  stroke="#FFF8E9"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path d="M183 54L186 59L192 60L187 64L188 70L183 67L178 70L179 64L174 60L180 59L183 54Z" fill="#FFD574" />
+                <circle cx="197" cy="75" r="4.5" fill="#FFE7B7" />
+                <circle cx="178" cy="80" r="3.5" fill="#FFEFD3" />
+                <circle cx="101" cy="154" r="3.5" fill="#FFECCB" />
+                <circle cx="112" cy="148" r="2.5" fill="#FFD587" />
+              </svg>
+
+              <div className="absolute left-5 top-8 w-[112px] rotate-[-11deg] rounded-[24px] bg-[#fff8ee]/92 p-3 shadow-[0_14px_24px_rgba(122,64,8,0.18)]">
+                <p className="text-[10px] font-bold tracking-[0.12em] text-[#ab640b]">HK STOCK</p>
+                <p className="mt-1 text-[24px] font-black leading-none text-[#ea7f00]">20</p>
+                <p className="mt-1 text-[11px] font-semibold text-[#97591a]">TOP RANK</p>
               </div>
-              <div className="absolute bottom-[22px] left-[30px] h-[38px] w-[38px] rounded-full bg-[#fff3e3] text-center text-[20px] leading-[38px]">
-                👤
+
+              <div className="absolute right-5 top-8 w-[152px] rotate-[8deg] rounded-[24px] bg-white/95 p-3 shadow-[0_14px_22px_rgba(132,72,12,0.16)]">
+                <p className="text-[10px] font-bold tracking-[0.08em] text-[#a6855c]">SIMULATED ASSET</p>
+                <p className="mt-1 text-[18px] font-black leading-none text-[#311f10]">HK$ 1,000,000</p>
+                <div className="mt-2 h-1.5 w-full rounded-full bg-[#f8e5cf]">
+                  <span className="block h-full w-[72%] rounded-full bg-[linear-gradient(90deg,#ffb350_0%,#f4860f_100%)]" />
+                </div>
               </div>
-              <div className="absolute bottom-[26px] right-[38px] h-[34px] w-[34px] rounded-full bg-[#ffe9ce] text-center text-[19px] leading-[34px]">
-                🎯
+
+              <div className="absolute bottom-4 left-5 inline-flex h-8 items-center rounded-full bg-white/90 px-3 text-[11px] font-bold text-[#8f560f]">
+                {copy.eventLabel}
+              </div>
+              <div className="absolute bottom-3 right-5 flex h-10 w-10 items-center justify-center rounded-full bg-[#fff6e9] text-[16px] text-[#de7f0e] shadow-[0_8px_18px_rgba(141,76,10,0.18)]">
+                ★
               </div>
             </div>
           </div>
 
-          <div className="mt-5 text-center">
-            <p className="text-[17px] font-black tracking-[0.08em] text-[#de8e2d]">
+          <div className="mt-6 text-center">
+            <p className="inline-flex items-center rounded-full border border-[#f5d9b3] bg-[#fff5e9] px-3 py-1 text-[11px] font-black tracking-[0.14em] text-[#bb7014]">
               {viewModel.primaryBrand}
-              <span className="mx-2 text-[12px] font-medium text-[#7a8897]">x</span>
-              <span className="text-[17px] text-[#eb7f00]">{viewModel.partnerBrand}</span>
+              <span className="mx-2 text-[#c79865]">×</span>
+              <span>{viewModel.partnerBrand}</span>
             </p>
-            <h1 className="mt-1 whitespace-pre-line text-[24px] font-extrabold leading-[1.2] text-[#1f1f1f]">
+            <h1 className="mt-3 whitespace-pre-line text-[28px] font-extrabold leading-[1.15] text-[#2b1a0f]">
               {viewModel.competition}
             </h1>
           </div>
 
-          <div className="mx-auto mt-6 w-full max-w-[286px] rounded-[24px] border border-[#efdfca] bg-white px-4 py-4 text-center shadow-[0_16px_30px_rgba(157,119,68,0.1)]">
-            <p className="text-[21px] font-bold text-[#dd8820]">♛</p>
-            <p className="mt-1 text-[13px] font-semibold tracking-[0.04em] text-[#4f647f]">
-              {viewModel.prizeLabel}
-            </p>
-            <p className="mt-1 text-[28px] font-black leading-none text-[#f2941d]">
-              {viewModel.prizeAmount}
-            </p>
-            <p className="mt-1 text-[12px] text-[#89929f]">{viewModel.prizeSponsor}</p>
+          <div className="mx-auto mt-6 w-full max-w-[302px] rounded-[24px] border border-[#f0d6b3] bg-white/90 px-4 py-4 text-center shadow-[0_16px_36px_rgba(155,96,27,0.12)]">
+            <p className="text-[12px] font-black tracking-[0.16em] text-[#ba7218]">{viewModel.prizeLabel}</p>
+            <p className="mt-2 text-[32px] font-black leading-none text-[#ef8612]">{viewModel.prizeAmount}</p>
+            <p className="mt-2 text-[12px] font-medium text-[#9f7c54]">{viewModel.prizeSponsor}</p>
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
@@ -115,10 +234,13 @@ export default function GuestPage() {
                 key={action.label}
                 type="button"
                 onClick={() => setActiveInfoModalOverride(action.modalKey)}
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-[#ede2d0] bg-white text-[13px] font-semibold text-[#4a6785]"
+                className="group inline-flex h-12 items-center gap-2 rounded-[16px] border border-[#efd8bb] bg-white/92 px-3 text-left shadow-[0_10px_20px_rgba(122,75,17,0.06)]"
               >
-                <GuestInfoIcon modalKey={action.modalKey} />
-                {action.label}
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#fff0d9] text-[#d47a00]">
+                  <GuestInfoIcon modalKey={action.modalKey} />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#573618]">{action.label}</span>
+                <span className="text-[15px] font-black text-[#d2872d] transition-transform group-active:translate-x-0.5">›</span>
               </button>
             ))}
           </div>
@@ -126,28 +248,30 @@ export default function GuestPage() {
           <div className="mt-6 flex flex-col gap-3">
             <Link
               href={primaryAction.href}
-              className="inline-flex h-12 items-center justify-center rounded-full bg-[linear-gradient(90deg,#f48d22_0%,#ef7c00_100%)] text-[16px] font-bold text-white shadow-[0_14px_30px_rgba(255,136,26,0.28)]"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-[#f6b46f] bg-[linear-gradient(90deg,#f59a35_0%,#ef7c00_100%)] text-[16px] font-black text-white shadow-[0_16px_30px_rgba(239,124,0,0.32)]"
             >
               {primaryAction.label}
             </Link>
             <button
               type="button"
               onClick={() => setActiveInfoModalOverride(viewModel.rulesAction.modalKey)}
-              className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold text-[#4f6784]"
+              className="mx-auto inline-flex h-10 items-center justify-center rounded-full border border-[#f1d7b4] bg-[#fff7ec] px-4 text-[13px] font-bold text-[#875428]"
             >
               {viewModel.rulesAction.label}
             </button>
           </div>
 
           {session ? (
-            <p className="mt-3 text-center text-[12px] text-[#8a8a8a]">
+            <p className="mt-3 text-center text-[12px] font-medium text-[#94795a]">
               {copy.identified} {session.nickname}
             </p>
           ) : null}
 
-          <div className="mt-auto flex items-end justify-between pt-10 text-[12px] text-[#a7a7a7]">
-            <p>{viewModel.footerLeft}</p>
-            <p>{viewModel.footerRight}</p>
+          <div className="mt-auto border-t border-[#efd9bc] pt-5 text-[11px] text-[#a2896b]">
+            <div className="flex items-center justify-between gap-3">
+              <p>{viewModel.footerLeft}</p>
+              <p>{viewModel.footerRight}</p>
+            </div>
           </div>
         </div>
 

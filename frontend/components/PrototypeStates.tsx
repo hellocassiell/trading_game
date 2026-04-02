@@ -701,7 +701,7 @@ export function TradeSuccessPreview({ product }: { product: TradeProduct }) {
       <h2 className="mt-3 text-center text-[14px] font-semibold text-[#4f5d73]">提交成功</h2>
       <div className="mt-4 space-y-2">
         <Link
-          href="/records"
+          href="/records?tab=status"
           className="flex h-8 items-center justify-center rounded-full border border-[var(--app-orange-soft)] bg-white text-[11px] font-semibold text-[var(--app-orange)]"
         >
           查看交易状况

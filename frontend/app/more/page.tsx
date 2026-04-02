@@ -7,7 +7,6 @@ import {
   ArrowRight,
   BellRing,
   LogOut,
-  Sparkles,
 } from "lucide-react";
 
 import AppScreen from "../../components/AppScreen";
@@ -15,16 +14,6 @@ import ScreenTopBar from "../../components/ScreenTopBar";
 import SurfaceCard from "../../components/SurfaceCard";
 import { useLanguage, useLanguageOptions, useTranslation } from "../../components/LanguageProvider";
 import { clearAuthSession } from "../../lib/adapters/auth";
-
-const quickEntries = [
-  {
-    titleKey: "more.quickEntry.rank.title",
-    descriptionKey: "more.quickEntry.rank.desc",
-    href: "/market/top-volume",
-    icon: Sparkles,
-    tone: "from-[#fff3dc] to-[#ffe1a8] text-[#d97706]",
-  },
-] as const;
 
 const marketLinks = [
   { labelKey: "more.market.ranking", href: "/leaderboard" },
@@ -66,31 +55,6 @@ export default function MorePage() {
       <ScreenTopBar title={t("more.pageTitle")} hideLeading />
 
       <div className="space-y-4 pt-2">
-        <div className="grid grid-cols-1 gap-3">
-          {quickEntries.map(({ titleKey, descriptionKey, href, icon: Icon, tone }) => (
-            <Link key={titleKey} href={href} className="block">
-              <SurfaceCard tone="flat" className="px-3 py-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-gradient-to-br ${tone}`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-body font-black text-[#4f3a26]">
-                      {t(titleKey)}
-                    </p>
-                    <p className="mt-0.5 text-helper leading-relaxed text-[#9f8a74]">
-                      {t(descriptionKey)}
-                    </p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-[#b49a7a]" />
-                </div>
-              </SurfaceCard>
-            </Link>
-          ))}
-        </div>
-
         <SectionBlock title={t("more.languageTitle")} icon={BellRing}>
           <p className="text-helper leading-relaxed text-[#9f8a74]">
             {t("more.languageHint")}

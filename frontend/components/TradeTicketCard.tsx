@@ -1381,7 +1381,7 @@ export default function TradeTicketCard({
                 setShowSuccess(false);
                 onClose?.();
                 startTransition(() => {
-                  router.push("/records");
+                  router.push("/records?tab=status");
                 });
               }}
               className="text-body flex h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffb55c_0%,var(--app-orange)_58%,var(--app-orange-dark)_100%)] font-black text-white"

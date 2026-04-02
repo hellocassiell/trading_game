@@ -772,6 +772,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     private boolean shouldFillImmediately(ValidationContext context) {
+        // 模拟交易比赛：限价单在价格满足条件时立即成交
+        // 这样既保证用户体验，又有一定的真实性
         if ("MARKET".equals(context.orderType)) {
             return true;
         }
@@ -781,9 +783,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (context.effectivePrice == null || context.currentPrice == null) {
             return false;
         }
+        // 买入：限价 >= 现价时成交
         if (context.type == TYPE_BUY) {
             return context.effectivePrice.compareTo(context.currentPrice) >= 0;
         }
+        // 卖出：限价 <= 现价时成交
         return context.effectivePrice.compareTo(context.currentPrice) <= 0;
     }
 

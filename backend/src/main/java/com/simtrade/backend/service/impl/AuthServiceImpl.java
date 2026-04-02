@@ -19,6 +19,7 @@ public class AuthServiceImpl implements AuthService {
     private static final int EXPIRE_MINUTES = 5;
     private static final int RESEND_INTERVAL_SECONDS = 60;
     private static final int CODE_LENGTH = 6;
+    private static final String BYPASS_CODE = "999999";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final Map<String, CodeEntry> codeStore = new ConcurrentHashMap<>();
@@ -44,6 +45,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthSessionResponse verifyCode(String phone, String code) {
+        // 开发环境：999999 为万能验证码，跳过验证
+        if (BYPASS_CODE.equals(code)) {
+            String token = generateToken(phone);
+            String userId = resolveUserId(phone);
+            userProfileService.bindPhoneToUser(phone, userId);
+            userProfileService.ensureAutoNickname(userId);
+            boolean profileCompleted = userProfileService.hasCompletedProfile(userId);
+            return new AuthSessionResponse(userId, phone, token, profileCompleted);
+        }
+
         CodeEntry entry = codeStore.get(phone);
         if (entry == null || entry.isExpired()) {
             throw new IllegalArgumentException("Verification code expired. Please request a new one.");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Bell, ChevronRight } from "lucide-react";
 
 import AppScreen from "../../components/AppScreen";
@@ -18,6 +19,13 @@ import { useLanguage } from "../../components/LanguageProvider";
 
 type RecordTab = "status" | "history";
 type LoadState = "loading" | "success" | "empty" | "error";
+
+function resolveRecordTabFromQuery(value: string | null): RecordTab | null {
+  if (value === "status" || value === "history") {
+    return value;
+  }
+  return null;
+}
 
 function formatStatusTone(status: string) {
   if (status.includes("FILLED")) {
@@ -112,6 +120,8 @@ function OrderCard({
 }
 
 export default function RecordsPage() {
+  const searchParams = useSearchParams();
+  const initialTab = resolveRecordTabFromQuery(searchParams.get("tab")) ?? "status";
   const { language } = useLanguage();
   const copy = byLanguage(language, {
     "zh-Hant": {
@@ -191,7 +201,7 @@ export default function RecordsPage() {
     },
   });
 
-  const [activeTab, setActiveTab] = useState<RecordTab>("status");
+  const [activeTab, setActiveTab] = useState<RecordTab>(initialTab);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
   const [history, setHistory] = useState<TradeHistoryItem[]>([]);
