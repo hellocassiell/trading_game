@@ -134,6 +134,7 @@ class ViewQueryServiceTest {
     @Test
     void toOrderView_shouldIncludeSettlementFieldsWhenLedgerHasMatchedRecord() {
         Order order = buildOrder("ord_settle_view_1", "u_2002", "00700", 1, 2, new BigDecimal("300.00"), 100, 100);
+        LocalDate settlementDate = LocalDate.now(ZoneId.of("Asia/Hong_Kong")).plusDays(1);
         accountLedgerService.reserveForPendingOrder(order, "LIMIT", new BigDecimal("120.00"));
         accountLedgerService.onOrderMatched(
                 order,
@@ -142,12 +143,12 @@ class ViewQueryServiceTest {
                 new BigDecimal("299.80"),
                 new BigDecimal("162.38"),
                 LocalDateTime.of(2026, 3, 27, 10, 0),
-                java.time.LocalDate.of(2026, 4, 2)
+                settlementDate
         );
 
         Map<String, Object> view = viewQueryService.toOrderView(order, "zh-Hant");
 
-        Assertions.assertEquals("2026-04-02", view.get("settlementDate"));
+        Assertions.assertEquals(settlementDate.toString(), view.get("settlementDate"));
         Assertions.assertEquals("PENDING", view.get("settlementStatus"));
         Assertions.assertEquals(new BigDecimal("-30142.38"), view.get("estimatedNetCashFlow"));
         Assertions.assertEquals(100, view.get("matchedQuantity"));
