@@ -101,6 +101,7 @@
 - 已有页面：登录、主页、个人、记录、更多、交易链路、排行榜、市场榜单等
 - 当前补充：首页排行榜模块右上角“更多”已改为进入独立 `/leaderboard` 页面，当前最多展示前 100 位；星级参赛者继续使用 `/ranking`
 - 当前事实：前端已补 adapter 层自动化测试与统一 `npm run test` 入口；交易链路（搜索/报价/下单/改单/撤单）已通过前端 adapter 对接现有后端接口；`/trade/[symbol]/detail` 已接入实时报价与买卖盘（先拉快照，再通过 SSE 订阅增量），且已补 `zh-Hant / zh-Hans / en` 多语展示；`/trade/[symbol]/confirm`、`/edit`、`/success`、`/validity` 已切换为正式 `TradeTicketCard` 实现，不再依赖 `PrototypeStates` 预览壳；`/records` 的 `交易状况` 与 `交易记录` 两个 tab 均可进入订单详情，且非排队中订单会按只读详情展示
+- 当前事实补充：前端已新增 Playwright E2E 最小闭环，覆盖 `登录 -> 首页` 与 `交易提交 -> 记录页` 两条关键链路；`/trade/[symbol]`、`/confirm`、`/edit`、`/success`、`/validity` 改为优先在客户端按 `symbol` 拉取带用户态的交易视图，避免服务端预取时因缺少登录态退回 0 值兜底
 - 当前登录前实现约束：`/auth/invite` 是注册选择头像与昵称页，不是邀请好友页；`注册中途离开确认` 与 `账户被封锁` 按设计稿必须做成当前页弹窗，不再落独立路由页；输入场景统一使用设备原生键盘
 - 当前登录前实现约束补充：注册昵称最长 8 个字符，头像与昵称确认后需提交 `/api/v1/auth/profile` 并以后端回读结果作为最终展示来源
 - 当前登录页补充：`/auth` 需包含手机号输入、验证码输入、右侧获取验证码按钮、60 秒倒计时与重新获取逻辑，再进入选择头像页
@@ -109,7 +110,7 @@
 ### 后端
 
 - 目录：`backend/`
-- 技术栈：Spring Boot 2.7、Java 17、MyBatis-Plus、MySQL、Redis、RabbitMQ
+- 技术栈：Spring Boot 2.7、Java 8+、MyBatis-Plus、MySQL、Redis、RabbitMQ
 - 当前状态：已有订单提交、撮合、手续费计算、统一返回结构、全局异常处理、手续费单元测试
 - 当前新增：已补 `AccountLedgerService` 账本层，撮合后会更新可用/冻结/在途资金与持仓（含限价挂单冻结、撤单释放、T+2 结算入账）；订单详情/历史视图已可返回 `settlementDate`、`settlementStatus`、`estimatedNetCashFlow`
 - 当前新增：AOB 行情链路已补 protobuf 解码与订阅发布能力（`aob.subscription.*`），`MarketDataConsumer` 支持 protobuf/JSON 双格式消费并统一进入实时推送+撮合
@@ -142,9 +143,9 @@
   - 当前后端已补本地联调用全局 CORS 配置，默认放行 `http://localhost:*` 与 `http://127.0.0.1:*` 访问 `/api/**`
 - 当前本地环境事实（2026-03-28）：
   - 已通过 Homebrew 安装 `openjdk@17`、`maven`、`mysql`、`redis`、`rabbitmq`
-  - 当前 shell 默认 `java -version` 仍可能落在 JDK 24；后端执行前必须显式切到 Homebrew 的 JDK 17，例如：
+  - 当前 shell 默认 `java -version` 仍可能落在 JDK 24；后端执行前建议切到 JDK 8+，例如：
     `export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home && export PATH="$JAVA_HOME/bin:$PATH"`
-  - `backend/pom.xml` 已对齐到 Java 17 编译目标，不要再用其他 Java 版本直接跑 Maven
+  - `backend/pom.xml` 已配置 `--release 8`，编译产物兼容 Java 8+，可用 JDK 8 及以上版本运行
   - 已补充本地启动脚本 `backend/run-local.sh` 与最小数据库初始化脚本 `backend/init-local-db.sh`
 
 ## 6. 前端规范
@@ -238,11 +239,13 @@
 
 - 命令：
   - `cd frontend && npm run test`
+  - `cd frontend && npm run test:e2e`
   - `cd frontend && npm run lint`
   - `cd frontend && npm run build`
-- 2026-04-01 实测结果：通过
+- 2026-04-03 实测结果：通过
 - 作用：
   - `npm run test`：执行当前前端 adapter 单测（基于 `node:test`）
+  - `npm run test:e2e`：执行当前 Playwright 浏览器级主流程验证（目前覆盖登录到首页、交易提交到记录页）
   - `npm run lint`：执行 ESLint CLI 非交互校验
   - `npm run build`：验证 Next.js 编译、路由构建与基础类型检查
 - 演示部署补充：使用 Vercel 时必须配置 `NEXT_PUBLIC_API_BASE_URL=https://<your-https-tunnel-domain>` 与 `NEXT_PUBLIC_DEMO_USER_ID`
@@ -258,8 +261,10 @@
   - `frontend/lib/adapters/records-page-flow.test.ts`
   - `frontend/lib/adapters/trade-ticket-order-preset.test.ts`
   - `frontend/lib/adapters/trade-ticket-state.test.ts`
-- 2026-04-01 当前结果：`npm run test` 可稳定执行，当前共 21 个测试通过
-- 结论：前端已不再是“无自动化测试文件”的状态，但测试覆盖仍集中在 adapter 层，尚未扩展到页面交互或 E2E
+  - `frontend/e2e/auth-to-home.spec.ts`
+  - `frontend/e2e/trade-submit-records.spec.ts`
+- 2026-04-03 当前结果：`npm run test` 可稳定执行，当前共 27 个测试通过；`npm run test:e2e` 可稳定执行，当前 2 个 Playwright E2E 通过
+- 结论：前端已不再是“仅有 adapter 层自动化”的状态，当前已补到关键页面交互与浏览器级主流程验证，但 E2E 覆盖仍以最小关键链路为主
 
 ### 后端默认验证
 
@@ -273,7 +278,7 @@
   - `backend/src/test/java/com/simtrade/backend/controller/V1ControllerTest.java`
 - 注意：`V1ControllerTest`（`@WebMvcTest`）已对账务持久化相关 Mapper 使用 `@MockBean`，避免测试上下文误拉起 MyBatis `sqlSessionFactory` 依赖。
 - 2026-04-01 当前环境结果：已实测通过（124 tests）
-- 结论：`mvn test` 已可作为后端默认回归入口，但必须显式切到 JDK 17
+- 结论：`mvn test` 已可作为后端默认回归入口，建议使用 JDK 8 及以上版本
 
 ### 后端本地启动
 
@@ -303,11 +308,13 @@
    - 至少跑 `cd frontend && npm run build`
 2. 改前端交互或状态逻辑：
    - 跑 `cd frontend && npm run test`
+   - 如涉及登录、交易、记录等主流程，补跑 `cd frontend && npm run test:e2e`
    - 跑 `cd frontend && npm run lint`
    - 跑 `cd frontend && npm run build`
    - 手动检查相关页面链路是否可达
 3. 改前端 adapter / API 映射层：
    - 跑 `cd frontend && npm run test`
+   - 如影响登录、交易或记录主流程，补跑 `cd frontend && npm run test:e2e`
    - 跑 `cd frontend && npm run lint`
    - 跑 `cd frontend && npm run build`
    - 同时核对字段映射、错误态与空态是否仍被页面正确接住
@@ -322,7 +329,7 @@
 ## 10. 当前建议优先补强项
 
 - 前端继续扩展自动化覆盖，从 adapter 层逐步补到关键页面交互与 smoke/E2E
-- 后端补充 JDK 17 的固定使用方式（如启动脚本或环境说明），避免误用其他 Java 版本
+- 后端建议使用 JDK 8 及以上版本，`pom.xml` 已配置 `--release 8` 保证字节码兼容
 - 逐步把 PRD 中的交易规则从文档落到单元测试和集成测试
 - 逐步消除“PRD 接口约定”和“当前代码路径/字段”的偏差
 - 如果前端开始对接真实接口，先建立 typed API client，不要让页面直接散写 fetch 逻辑

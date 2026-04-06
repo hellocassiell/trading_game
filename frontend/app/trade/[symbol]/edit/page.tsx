@@ -1,5 +1,4 @@
 import TradeTicketCard from "../../../../components/TradeTicketCard";
-import { getTradeProductViewModel } from "../../../../lib/adapters/trade";
 
 type TradeEditPageProps = {
   params: Promise<{ symbol: string }>;
@@ -7,11 +6,10 @@ type TradeEditPageProps = {
 
 export default async function TradeEditPage({ params }: TradeEditPageProps) {
   const { symbol } = await params;
-  const product = await getTradeProductViewModel(symbol);
 
   return (
     <TradeTicketCard
-      product={product}
+      symbol={symbol}
       variant="order"
       initialStage="ticket"
       orderStatus="PENDING"

@@ -2,7 +2,7 @@
 
 This backend now runs locally with:
 
-- Java 17
+- Java 8+ (compiled with `--release 8`)
 - Maven
 - MySQL
 - Redis
@@ -47,7 +47,7 @@ Notes:
 
 ## Start the backend
 
-Use the local startup script so the repo always runs with JDK 17:
+Use the local startup script so the repo runs with JDK 8+:
 
 ```bash
 cd backend
@@ -57,8 +57,10 @@ cd backend
 The script:
 
 - exports `JAVA_HOME` to Homebrew `openjdk@17`
-- prepends JDK 17 and Homebrew binaries to `PATH`
+- prepends JDK and Homebrew binaries to `PATH`
 - runs `mvn spring-boot:run`
+
+Note: The project is compiled with `--release 8`, so it's compatible with any JDK 8 or above.
 
 ## Verify
 

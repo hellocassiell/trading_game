@@ -301,7 +301,7 @@ class OrderServiceImplV1Test {
                 .map(Order::getStatus)
                 .collect(java.util.stream.Collectors.toSet());
 
-        Assertions.assertEquals(java.util.Set.of(0, 1, 2), statuses);
+        Assertions.assertEquals(new java.util.HashSet<>(java.util.Arrays.asList(0, 1, 2)), statuses);
         Assertions.assertEquals(3, statuses.size());
         Assertions.assertFalse(statuses.contains(3));
     }

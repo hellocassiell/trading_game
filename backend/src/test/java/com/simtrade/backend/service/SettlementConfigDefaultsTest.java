@@ -7,6 +7,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 class SettlementConfigDefaultsTest {
@@ -26,8 +27,8 @@ class SettlementConfigDefaultsTest {
 
     @Test
     void demoEnvExample_shouldDocumentReadSettlementFallbackAsDisabled() throws Exception {
-        Path envPath = Path.of("/Users/liuliu/Desktop/trading_game/deploy/env/backend.demo.env.example");
-        String content = Files.readString(envPath);
+        Path envPath = Paths.get("/Users/liuliu/Desktop/trading_game/deploy/env/backend.demo.env.example");
+        String content = new String(Files.readAllBytes(envPath));
 
         Assertions.assertTrue(content.contains("APP_SETTLEMENT_READ_FALLBACK_ENABLED=false"));
     }

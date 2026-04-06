@@ -15,7 +15,7 @@
 
 #### 环境要求
 
-- Java 17+
+- Java 8+ (compiled with `--release 8`)
 - MySQL 8.x
 - Redis 7.x
 - RabbitMQ 3.x
